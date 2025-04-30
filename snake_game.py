@@ -25,7 +25,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake Game")
 
 # Snake and food
-snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+snake = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)] 
 snake_dir = (1, 0)
 food = (random.randint(0, GRID_WIDTH - 1), random.randint(1, GRID_HEIGHT - 1))  # Avoid top row
 score = 0
@@ -34,12 +34,12 @@ game_over = False
 current_fps = BASE_FPS
 game_state = "start"
 player_name = ""
-input_active = True  # Input active by default
+input_active = True  
 
 # Clock for controlling frame rate
 clock = pygame.time.Clock()
 
-# Font for text rendering
+
 font = pygame.font.SysFont(None, 36)
 
 def reset_game():
