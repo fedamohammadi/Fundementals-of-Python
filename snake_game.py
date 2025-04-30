@@ -9,7 +9,7 @@ WIDTH = 400
 HEIGHT = 400
 GRID_SIZE = 20
 GRID_WIDTH = WIDTH // GRID_SIZE
-GRID_HEIGHT = HEIGHT // GRID_SIZE - 1  # Reserve top row for score
+GRID_HEIGHT = HEIGHT // GRID_SIZE - 1  
 BASE_FPS = 5
 MAX_FPS = 15
 
@@ -20,7 +20,7 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 GRAY = (128, 128, 128)
 
-# Set up the display
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Snake Game")
 
@@ -36,7 +36,7 @@ game_state = "start"
 player_name = ""
 input_active = True  
 
-# Clock for controlling frame rate
+
 clock = pygame.time.Clock()
 
 
