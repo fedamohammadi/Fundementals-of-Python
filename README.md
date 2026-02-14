@@ -131,4 +131,4 @@ The emphasis is on connecting theory to code.
 
 Quantitative Economics and Mathematics student at Berea College. My focused areas are econometrics, Machine Learning, causal inference, and applied policy analysis.
 
-Any questions? Reach out -> mohammadif@berea.edu
+Any questions? Reach out @ mohammadif@berea.edu
