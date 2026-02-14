@@ -1,0 +1,16 @@
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+statsmodels
+scikit-learn
+linearmodels
+patsy
+openpyxl
+pyarrow
+requests
+sqlalchemy
+jupyter
+pytest
+pandas-datareader
