@@ -37,18 +37,19 @@ Each concept builds toward applied research skills.
 
 ## 📁 Repository Structure
 
+```text
 Fundamentals-of-Python/
 │
-├── data/ # Local datasets used in examples
-├── scripts/ # Core Python fundamentals
-├── data_analysis/ # NumPy, pandas, cleaning, EDA
-├── econometrics/ # OLS, IV, panel, time series
+├── data/                # Local datasets used in examples
+├── scripts/             # Core Python fundamentals
+├── data_analysis/       # NumPy, pandas, cleaning, EDA
+├── econometrics/        # OLS, IV, panel, time series
 │
-├── get_data.py # Script to download and save datasets
-├── requirements.txt # Required Python packages
+├── get_data.py          # Script to download and save datasets
+├── requirements.txt     # Required Python packages
 ├── .gitignore
 └── README.md
-
+```
 
 
 ---
@@ -120,19 +121,6 @@ You will implement econometric models using real datasets:
 - Introduction to time series modeling  
 
 The emphasis is on connecting theory to code.
-
----
-
-### 🔬 Research-Oriented Coding
-
-Beyond models, you will also develop habits that matter in real research:
-
-- Reproducible workflows  
-- Structured project organization  
-- Clean script design  
-- Local data storage for version control  
-- Clear interpretation of results  
-
 
 
 ---
