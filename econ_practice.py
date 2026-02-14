@@ -1,25 +1,34 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
-# Apples (x-axis)
-A = np.linspace(1, 100, 500)
-# Bananas from the indifference curve
-B = 1350 / A
+# Optional: make sure the Figures folder exists
+os.makedirs("Figures", exist_ok=True)
 
-# Plot curve
-plt.plot(A, B, label="Indifference curve U=1350")
-plt.scatter(15, 90, color="red", zorder=5, label="Current bundle (15,90)")
+# 1. Generate example data
+np.random.seed(0)
+x = np.random.uniform(0, 10, 50)              # Hours studied
+y = 50 + 3 * x + np.random.normal(0, 4, 50)   # Exam score with noise
 
-# Add tangent line at (15,90) with slope -6
-slope = -6
-x0, y0 = 15, 90
-tangent_x = np.linspace(5, 25, 100)
-tangent_y = slope * (tangent_x - x0) + y0
-plt.plot(tangent_x, tangent_y, 'g--', label="Tangent slope -6")
+# 2. Fit a simple linear regression line using numpy.polyfit
+#    y ≈ m*x + b
+m, b = np.polyfit(x, y, 1)
 
-plt.xlabel("Apples (A)")
-plt.ylabel("Bananas (B)")
-plt.title("Maisie’s Indifference Curve")
+# 3. Create smooth line for plotting the regression line
+x_line = np.linspace(x.min(), x.max(), 100)
+y_line = m * x_line + b
+
+# 4. Plot scatter + regression line
+plt.figure(figsize=(7, 5))
+plt.scatter(x, y, label="Data points")
+plt.plot(x_line, y_line, label="Regression line")
+
+plt.xlabel("Hours studied")
+plt.ylabel("Exam score")
+plt.title("Scatterplot with Regression Line")
 plt.legend()
-plt.grid(True)
-plt.show()
+plt.tight_layout()
+
+# 5. Save the figure into the Figures folder
+#plt.savefig("Figures/scatter_regression.png", dpi=300, bbox_inches="tight")
+#plt.show()
