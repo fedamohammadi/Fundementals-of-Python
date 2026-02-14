@@ -65,7 +65,6 @@ Sources include:
 
 To regenerate the datasets:
 
-```bash
 python get_data.py
 
 
