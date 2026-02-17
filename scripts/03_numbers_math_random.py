@@ -29,6 +29,3 @@ plt.title("Scatterplot with Regression Line")
 plt.legend()
 plt.tight_layout()
 
-# 5. Save the figure into the Figures folder
-#plt.savefig("Figures/scatter_regression.png", dpi=300, bbox_inches="tight")
-#plt.show()

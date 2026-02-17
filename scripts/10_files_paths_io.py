@@ -4,17 +4,6 @@
 # print(myName[5])
 # print(len(myName))
 
-# number1 = 24
-# print(float(number1))
-
-# number2 = 2457844555
-# print(ord(number2))
-
-# user_num_1 = input('What is the first number is: ')
-# user_num_2 = input('What is the second number is: ')
-# user_sum = int(user_num_1) + int(user_num_2)
-# print(user_sum)
-
 total_bill = 300
 
 bill_discount1 = 30 
