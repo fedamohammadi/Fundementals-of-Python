@@ -10,8 +10,6 @@ np.random.seed(0)
 x = np.random.uniform(0, 10, 50)              # Hours studied
 y = 50 + 3 * x + np.random.normal(0, 4, 50)   # Exam score with noise
 
-# 2. Fit a simple linear regression line using numpy.polyfit
-#    y ≈ m*x + b
 m, b = np.polyfit(x, y, 1)
 
 # 3. Create smooth line for plotting the regression line
