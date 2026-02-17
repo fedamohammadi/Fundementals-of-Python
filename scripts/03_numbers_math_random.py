@@ -31,7 +31,7 @@ def section(title: str) -> None:
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
-
+    
 
 def main() -> None:
     section("Numbers, Math, and Randomness")
