@@ -63,7 +63,47 @@ def main() -> None:
     print(f"x % y = {x % y}")      # remainder
     print(f"x ** y = {x ** y}")    # exponent
 
+# ==============================================================
+# COMMIT 3: Add rounding and math module basics
+# ==============================================================
+def main() -> None:
+    section("1) Numeric types")
 
+    a = 10
+    b = 3.5
+
+    print(f"a = {a} (type: {type(a)})")
+    print(f"b = {b} (type: {type(b)})")
+
+    section("2) Arithmetic operators")
+
+    x = 7
+    y = 3
+
+    print(f"x + y = {x + y}")
+    print(f"x - y = {x - y}")
+    print(f"x * y = {x * y}")
+    print(f"x / y = {x / y}")
+    print(f"x // y = {x // y}")
+    print(f"x % y = {x % y}")
+    print(f"x ** y = {x ** y}")
+
+    section("3) Rounding and formatting")
+
+    value = 1234.56789
+    print(f"value = {value}")
+    print(f"round(value, 2) = {round(value, 2)}")
+    print(f"Formatted to 2 decimals: {value:.2f}")
+    print(f"Formatted with commas: {value:,.2f}")
+
+    section("4) math module basics")
+
+    z = 16
+    print(f"sqrt({z}) = {math.sqrt(z)}")
+    print(f"log({z}) (natural log) = {math.log(z)}")
+    print(f"log10({z}) = {math.log10(z)}")
+    print(f"exp(1) = {math.exp(1)}")
+    print(f"pi = {math.pi}")
 
 
 if __name__ == "__main__":
