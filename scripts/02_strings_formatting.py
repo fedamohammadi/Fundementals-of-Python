@@ -32,5 +32,32 @@ def main() -> None:
     print("This lesson will introduce string basics and clean formatting.")
 
 
+def main() -> None:
+    section("1) Creating strings")
+
+    name = "Feda"
+    country = "Afghanistan"
+    sentence = "Python is useful for research."
+
+    print(f"name = {name}")
+    print(f"country = {country}")
+    print(f"sentence = {sentence}")
+
+    section("2) Indexing and slicing")
+
+    text = "econometrics"
+    print(f"text = {text}")
+    print(f"text[0] = {text[0]}")
+    print(f"text[1] = {text[1]}")
+    print(f"text[-1] = {text[-1]}")
+
+    print(f"text[0:4] = {text[0:4]}")
+    print(f"text[:4] = {text[:4]}")
+    print(f"text[4:] = {text[4:]}")
+    print(f"text[-4:] = {text[-4:]}")
+
+
+
+
 if __name__ == "__main__":
     main()
