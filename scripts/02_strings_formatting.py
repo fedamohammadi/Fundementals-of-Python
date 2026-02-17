@@ -15,6 +15,7 @@ Concepts covered (progressively):
 - Cleaning text: strip, lower, replace
 - Simple parsing patterns used in data analysis
 
+
 """
 
 
@@ -28,6 +29,14 @@ def main() -> None:
     section("Strings and Formatting")
     print("This lesson will introduce string basics and clean formatting.")
 
+
+if __name__ == "__main__":
+    main()
+
+
+# ============================================================
+# Add string basics: create, index, slice
+# ============================================================
 
 def main() -> None:
     section("1) Creating strings")
@@ -53,6 +62,10 @@ def main() -> None:
     print(f"text[4:] = {text[4:]}")
     print(f"text[-4:] = {text[-4:]}")
 
+
+# ============================================================
+# Add common string methods + cleaning patterns
+# ============================================================
 
 def main() -> None:
     section("1) Creating strings")
@@ -96,6 +109,9 @@ def main() -> None:
     print(f"cleaned response: '{cleaned}'")
 
 
+# ============================================================
+# Add f-strings, number formatting, and parsing
+# ============================================================
 
 def main() -> None:
     section("1) Creating strings")
