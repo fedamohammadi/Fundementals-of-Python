@@ -1,10 +1,36 @@
-set_a = {1, 3, 5, 6, 7}
+"""
+02_strings_formatting.py
 
-set_b = {2, 4, 8, 5, 9, 10}
+Purpose:
+--------
+Learn how to work with text data in Python.
+Strings are everywhere in research: names, categories, IDs, survey responses,
+dates read as text, messy labels, and scraped web text.
 
-print(set_a.union(set_b))
-print(set_a | set_b)
+Concepts covered (progressively):
+- Creating strings
+- Indexing and slicing
+- Common string methods
+- f-strings and formatting
+- Cleaning text: strip, lower, replace
+- Simple parsing patterns used in data analysis
+
+Run:
+----
+python scripts/02_strings_formatting.py
+"""
 
 
-print(set_a & set_b)
-print(set_a.intersection(set_b))
+def section(title: str) -> None:
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+def main() -> None:
+    section("Strings and Formatting")
+    print("This lesson will introduce string basics and clean formatting.")
+
+
+if __name__ == "__main__":
+    main()
