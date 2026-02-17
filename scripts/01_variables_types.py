@@ -41,6 +41,41 @@ def main() -> None:
     print(f"name = {name} (type: {type(name)})")
     print(f"is_student = {is_student} (type: {type(is_student)})")
 
+def main() -> None:
+    section("1) Variables and Basic Types")
+
+    age = 21
+    gpa = 3.65
+    name = "Feda"
+    is_student = True
+
+    print(f"age = {age} (type: {type(age)})")
+    print(f"gpa = {gpa} (type: {type(gpa)})")
+    print(f"name = {name} (type: {type(name)})")
+    print(f"is_student = {is_student} (type: {type(is_student)})")
+
+    section("2) Type Conversion")
+
+    x = "10"
+    y = 5
+
+    print(f"x = {x} (type: {type(x)})")
+    print(f"y = {y} (type: {type(y)})")
+
+    x_int = int(x)
+    print(f"int(x) + y = {x_int + y}")
+
+    section("3) Core Collections")
+
+    numbers_list = [1, 2, 3, 4]
+    numbers_tuple = (1, 2, 3, 4)
+    person_dict = {"name": "Feda", "age": 21}
+    unique_set = {1, 2, 2, 3}
+
+    print(f"List: {numbers_list} (type: {type(numbers_list)})")
+    print(f"Tuple: {numbers_tuple} (type: {type(numbers_tuple)})")
+    print(f"Dictionary: {person_dict} (type: {type(person_dict)})")
+    print(f"Set (duplicates removed): {unique_set}")
 
 
 
