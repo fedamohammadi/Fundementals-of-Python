@@ -19,7 +19,7 @@ Concepts covered (progressively):
 """
 
 # ==============================================================
-# Add numbers/math/random lesson skeleton
+# Added numbers/math/random lesson skeleton
 # ==============================================================
 
 import math
@@ -39,7 +39,7 @@ def main() -> None:
 
 
 # ==============================================================
-# Add numeric types and arithmetic operations
+# Added numeric types and arithmetic operations
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")
@@ -64,7 +64,7 @@ def main() -> None:
     print(f"x ** y = {x ** y}")    # exponent
 
 # ==============================================================
-# COMMIT 3: Add rounding and math module basics
+# Added rounding and math module basics
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")
@@ -107,7 +107,7 @@ def main() -> None:
 
 
 # ==============================================================
-# COMMIT 4: Add randomness + reproducibility with seeds
+# Added randomness + reproducibility with seeds
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")
