@@ -15,9 +15,6 @@ Concepts covered (progressively):
 - Cleaning text: strip, lower, replace
 - Simple parsing patterns used in data analysis
 
-Run:
-----
-python scripts/02_strings_formatting.py
 """
 
 
