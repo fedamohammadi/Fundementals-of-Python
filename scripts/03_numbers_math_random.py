@@ -106,5 +106,76 @@ def main() -> None:
     print(f"pi = {math.pi}")
 
 
+# ==============================================================
+# COMMIT 4: Add randomness + reproducibility with seeds
+# ==============================================================
+def main() -> None:
+    section("1) Numeric types")
+
+    a = 10
+    b = 3.5
+
+    print(f"a = {a} (type: {type(a)})")
+    print(f"b = {b} (type: {type(b)})")
+
+    section("2) Arithmetic operators")
+
+    x = 7
+    y = 3
+
+    print(f"x + y = {x + y}")
+    print(f"x - y = {x - y}")
+    print(f"x * y = {x * y}")
+    print(f"x / y = {x / y}")
+    print(f"x // y = {x // y}")
+    print(f"x % y = {x % y}")
+    print(f"x ** y = {x ** y}")
+
+    section("3) Rounding and formatting")
+
+    value = 1234.56789
+    print(f"value = {value}")
+    print(f"round(value, 2) = {round(value, 2)}")
+    print(f"Formatted to 2 decimals: {value:.2f}")
+    print(f"Formatted with commas: {value:,.2f}")
+
+    section("4) math module basics")
+
+    z = 16
+    print(f"sqrt({z}) = {math.sqrt(z)}")
+    print(f"log({z}) (natural log) = {math.log(z)}")
+    print(f"log10({z}) = {math.log10(z)}")
+    print(f"exp(1) = {math.exp(1)}")
+    print(f"pi = {math.pi}")
+
+    section("5) Randomness (why seeds matter)")
+
+    # Without a seed, results change every run.
+    print("Random integers (no seed):")
+    print([random.randint(1, 10) for _ in range(5)])
+
+    # Setting a seed makes randomness reproducible.
+    random.seed(42)
+    print("\nRandom integers (seed=42):")
+    print([random.randint(1, 10) for _ in range(5)])
+
+    section("6) Mini simulation idea (coin flips)")
+
+    random.seed(7)
+    flips = 20
+    heads = 0
+
+    for _ in range(flips):
+        if random.random() < 0.5:
+            heads += 1
+
+    tails = flips - heads
+    print(f"Flips: {flips}, Heads: {heads}, Tails: {tails}")
+    print(f"Head share: {heads / flips:.2f}")
+
+    section("Done")
+    print("Next lesson: booleans and conditionals (decision logic).")
+
+
 if __name__ == "__main__":
     main()
