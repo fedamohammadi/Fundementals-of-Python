@@ -71,7 +71,59 @@ def main() -> None:
     print(f"is_college_age (18-24)? {is_college_age}")
 
 
+# ==============================================================
+# if/elif/else and threshold rules
+# ==============================================================
+def main() -> None:
+    section("1) Boolean type and comparisons")
 
+    x = 10
+    y = 7
+
+    print(f"x = {x}, y = {y}")
+    print(f"x > y  -> {x > y}")
+    print(f"x == y -> {x == y}")
+
+    section("2) Logical operators: and / or / not")
+
+    a = True
+    b = False
+
+    print(f"a and b -> {a and b}")
+    print(f"a or b  -> {a or b}")
+    print(f"not a   -> {not a}")
+
+    section("3) if / elif / else")
+
+    score = 87
+    print(f"score = {score}")
+
+    if score >= 90:
+        grade = "A"
+    elif score >= 80:
+        grade = "B"
+    elif score >= 70:
+        grade = "C"
+    elif score >= 60:
+        grade = "D"
+    else:
+        grade = "F"
+
+    print(f"Letter grade: {grade}")
+
+    section("4) Threshold rule (common in research)")
+
+    income = 32000
+    poverty_line = 30000
+
+    if income < poverty_line:
+        poverty_status = 1
+    else:
+        poverty_status = 0
+
+    print(f"income = {income}")
+    print(f"poverty_line = {poverty_line}")
+    print(f"poverty_status (1=below line): {poverty_status}")
 
 
 
