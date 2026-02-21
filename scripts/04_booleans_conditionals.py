@@ -1,22 +1,49 @@
-def main():
-    x, y = 100, 100
+"""
+04_booleans_conditionals.py
 
-    if x < y: 
-        result = "x is less than y."
-    elif x == y: 
-        result = "x is the same as y."
-    else:
-        result = "x is greater than y."
-    
-    print(result)
+Purpose:
+--------
+Learn boolean logic and conditional statements.
+This is essential for research work because you constantly make decisions like:
+- filter rows
+- handle missing values
+- apply rules based on thresholds
+- build indicators (0/1 variables)
 
-    result = "x is less than y." if x < y else "x is greater or equal to y."
-    print(result)
-    
-    value = "one"
+Concepts covered (progressively):
+- bool type and comparisons
+- Logical operators: and, or, not
+- if / elif / else
+- Common patterns: threshold rules, missing checks, category mapping
+"""
+
+# ===============================
+# Helpers
+# ===============================
+
+def section(title: str) -> None:
+    """Print a clean section header."""
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+# ===============================
+# Main
+# ===============================
+
+def main() -> None:
+    section("Booleans and Conditionals")
+    print("This lesson will introduce boolean logic and if-statements.")
+
+
+
+
+
+
+
+
+
 
 if __name__ == "__main__":
-     main()
-
-# next thing to pick up from. 
-
+    main()
