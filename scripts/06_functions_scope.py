@@ -1,31 +1,48 @@
-def func1():
-    print("I am a function, so use me!")
+# ==============================================================
+# Functions/scope lesson skeleton
+# ==============================================================
 
-#func1()
-#rint(func1)
-#print(func1())
+"""
+Purpose:
+--------
+Learn how to define and use functions properly.
+Understand local vs global scope.
 
-def func2(arg1 , arg2):
-    print(arg1, " ", arg2)
-    
-def cube(x):
-    return x * x * x
+Functions are important in research code because they:
+- Avoid repetition
+- Make logic reusable
+- Improve clarity
+- Help structure complex workflows
 
-#func2(10, 20)
-#print(func2 (10, 20))
-#print(cube (3))
+Concepts covered:
+- Defining functions
+- Parameters and return values
+- Default arguments
+- Local vs global scope
+- Why scope matters in research code
+"""
 
-def power(num, x=1):
-    result = 1;
-    for i in range (x):
-        result = result * num
-        return result
-    
-
-print(power(2))
-print(power(2,3))
-
-print(power(x=3, num=2))
+def section(title: str) -> None:
+    """Print a clean section header."""
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
 
 
-    
+# ===============================
+# Main
+# ===============================
+
+def main() -> None:
+    section("Functions and Scope")
+    print("This doc introduces reusable functions and variable scope.")
+
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()
