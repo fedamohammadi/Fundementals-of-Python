@@ -173,9 +173,6 @@ def main() -> None:
     print(f"Flips: {flips}, Heads: {heads}, Tails: {tails}")
     print(f"Head share: {heads / flips:.2f}")
 
-    section("Done")
-    print("Next lesson: booleans and conditionals (decision logic).")
-
 
 if __name__ == "__main__":
     main()

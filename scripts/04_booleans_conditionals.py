@@ -205,9 +205,5 @@ def main() -> None:
     else:
         print(f"text_value is present: '{text_value}'")
 
-    section("Done")
-    print("Next lesson: loops (iterating over data).")
-
-
 if __name__ == "__main__":
     main()

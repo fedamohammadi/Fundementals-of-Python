@@ -183,9 +183,5 @@ def main() -> None:
     print(f"Hits (divisible by 7): {hits}")
     print(f"Estimated probability: {prob_estimate:.3f}")
 
-    section("Done")
-    print("Next lesson: functions and scope.")
-
-
 if __name__ == "__main__":
     main()
