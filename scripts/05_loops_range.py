@@ -36,7 +36,29 @@ def main() -> None:
     section("Loops and range()")
     print("This lesson will introduce for-loops, while-loops, and range().")
 
+# ==============================================================
+# for-loops and range basics
+# ==============================================================
+def main() -> None:
+    section("1) for-loops with a list")
 
+    states = ["Kentucky", "Virginia", "Ohio"]
+    for state in states:
+        print(f"State: {state}")
+
+    section("2) range() basics")
+
+    print("range(5):")
+    for i in range(5):
+        print(i)
+
+    print("\nrange(2, 7):")
+    for i in range(2, 7):
+        print(i)
+
+    print("\nrange(0, 10, 2) (step size = 2):")
+    for i in range(0, 10, 2):
+        print(i)
 
 
 
