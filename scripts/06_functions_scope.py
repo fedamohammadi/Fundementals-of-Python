@@ -63,7 +63,38 @@ def main() -> None:
     print(f"Average income: {avg_income:.2f}")
 
 
+# ==============================================================
+# Default arguments and function structure
+# ==============================================================
 
+def calculate_growth(old: float, new: float, as_percent: bool = True) -> float:
+    """
+    Calculate growth rate between two values.
+
+    If as_percent=True, return percentage.
+    Otherwise return decimal.
+    """
+    growth = (new - old) / old
+    if as_percent:
+        return growth * 100
+    return growth
+
+
+def main() -> None:
+    section("1) Basic function definitions")
+
+    print(f"add(5, 3) = {add(5, 3)}")
+
+    incomes = [32000, 41000, 29000, 50000]
+    print(f"Average income: {compute_average(incomes):.2f}")
+
+    section("2) Default arguments")
+
+    old_gdp = 20000
+    new_gdp = 22000
+
+    print(f"GDP growth (percent): {calculate_growth(old_gdp, new_gdp):.2f}%")
+    print(f"GDP growth (decimal): {calculate_growth(old_gdp, new_gdp, as_percent=False):.4f}")
 
 
 if __name__ == "__main__":
