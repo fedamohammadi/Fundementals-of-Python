@@ -38,7 +38,29 @@ def main() -> None:
     print("This doc introduces reusable functions and variable scope.")
 
 
+# ==============================================================
+# Basic function definitions and returns
+# ==============================================================
 
+def add(a: float, b: float) -> float:
+    """Return the sum of two numbers."""
+    return a + b
+
+
+def compute_average(values: list[float]) -> float:
+    """Return the average of a list of numbers."""
+    return sum(values) / len(values)
+
+
+def main() -> None:
+    section("1) Basic function definitions")
+
+    result = add(5, 3)
+    print(f"add(5, 3) = {result}")
+
+    incomes = [32000, 41000, 29000, 50000]
+    avg_income = compute_average(incomes)
+    print(f"Average income: {avg_income:.2f}")
 
 
 
