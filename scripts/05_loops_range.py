@@ -60,6 +60,57 @@ def main() -> None:
     for i in range(0, 10, 2):
         print(i)
 
+# ==============================================================
+# Accumulators, break/continue, and while-loops
+# ==============================================================
+def main() -> None:
+    section("1) for-loops with a list")
+
+    states = ["Kentucky", "Virginia", "Ohio"]
+    for state in states:
+        print(f"State: {state}")
+
+    section("2) range() basics")
+
+    for i in range(5):
+        print(f"i = {i}")
+
+    section("3) Accumulator pattern (common in research)")
+
+    incomes = [32000, 41000, 29000, 50000]
+    total_income = 0
+
+    for income in incomes:
+        total_income += income
+
+    avg_income = total_income / len(incomes)
+    print(f"Incomes: {incomes}")
+    print(f"Total income: {total_income}")
+    print(f"Average income: {avg_income:.2f}")
+
+    section("4) break and continue")
+
+    nums = [3, 7, -2, 10, 5]
+
+    print("Stop when we see a negative number (break):")
+    for n in nums:
+        if n < 0:
+            print(f"Found negative {n}, stopping.")
+            break
+        print(f"n = {n}")
+
+    print("\nSkip small numbers below 5 (continue):")
+    for n in nums:
+        if n < 5:
+            continue
+        print(f"n = {n}")
+
+    section("5) while-loop basics")
+
+    count = 0
+    while count < 3:
+        print(f"count = {count}")
+        count += 1
 
 
 
