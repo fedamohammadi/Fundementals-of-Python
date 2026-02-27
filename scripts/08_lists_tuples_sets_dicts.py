@@ -1,15 +1,38 @@
-import turtle
-wn = turtle.Screen()
-wn.bgcolor("red")
-tess = turtle.Turtle()
-tess.color("white")
-tess.shape("turtle")
+# ==============================================================
+# Data structures
+# ==============================================================
 
-# print(list(range(5, 60, 2)))
-# tess.up()                     
-for size in range(100):   
-    tess.stamp()              
-    tess.forward(size)         
-    tess.left(24)       
+"""
+Purpose:
+--------
+Learn the four core Python data structures:
+- Lists
+- Tuples
+- Sets
+- Dictionaries
 
-wn.exitonclick()
+These structures are essential for:
+- Storing datasets
+- Cleaning messy values
+- Managing categorical variables
+- Representing observations and features
+"""
+
+
+def section(title: str) -> None:
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
+
+
+def main() -> None:
+    section("Data Structures in Python")
+    print("This lesson covers lists, tuples, sets, and dictionaries.")
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()

@@ -1,6 +1,4 @@
 """
-01_variables_types.py
-
 Purpose:
 --------
 Learn what variables are, what "types" are, and why types matter in data work.

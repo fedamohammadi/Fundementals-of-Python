@@ -17,10 +17,6 @@ Concepts covered (progressively):
 - Common patterns: threshold rules, missing checks, category mapping
 """
 
-# ===============================
-# Helpers
-# ===============================
-
 def section(title: str) -> None:
     """Print a clean section header."""
     print("\n" + "=" * 60)
@@ -28,17 +24,13 @@ def section(title: str) -> None:
     print("=" * 60)
 
 
-# ===============================
-# Main
-# ===============================
-
 def main() -> None:
     section("Booleans and Conditionals")
     print("This lesson will introduce boolean logic and if-statements.")
 
 
 # ==============================================================
-# Added comparisons and logical operators
+# Comparisons and logical operators
 # ==============================================================
 def main() -> None:
     section("1) Boolean type and comparisons")

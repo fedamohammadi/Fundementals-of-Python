@@ -1,6 +1,4 @@
 """
-00_hello_world.py
-
 Purpose:
 --------
 Introduce the most basic structure of a Python script.
@@ -17,7 +15,7 @@ def main() -> None:
     """Main execution function."""
 
     print("Hello, World!")
-    print("Welcome to Fundamentals of Python for Research.")
+    print("Welcome to Fundamentals of Python.")
 
     name = input("What is your name? ")
     print(f"Nice to meet you, {name}.")

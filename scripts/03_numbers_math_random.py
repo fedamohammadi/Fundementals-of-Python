@@ -1,6 +1,4 @@
 """
-03_numbers_math_random.py
-
 Purpose:
 --------
 Learn how Python handles numbers and basic math, and how randomness works.
@@ -19,7 +17,7 @@ Concepts covered (progressively):
 """
 
 # ==============================================================
-# Added numbers/math/random lesson skeleton
+# numbers/math/random lesson skeleton
 # ==============================================================
 
 import math
@@ -39,7 +37,7 @@ def main() -> None:
 
 
 # ==============================================================
-# Added numeric types and arithmetic operations
+# numeric types and arithmetic operations
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")
@@ -64,7 +62,7 @@ def main() -> None:
     print(f"x ** y = {x ** y}")    # exponent
 
 # ==============================================================
-# Added rounding and math module basics
+# Rounding and math module basics
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")
@@ -107,7 +105,7 @@ def main() -> None:
 
 
 # ==============================================================
-# Added randomness + reproducibility with seeds
+# Randomness + reproducibility with seeds
 # ==============================================================
 def main() -> None:
     section("1) Numeric types")

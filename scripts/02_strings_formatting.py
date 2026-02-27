@@ -1,6 +1,4 @@
 """
-02_strings_formatting.py
-
 Purpose:
 --------
 Learn how to work with text data in Python.
@@ -14,7 +12,6 @@ Concepts covered (progressively):
 - f-strings and formatting
 - Cleaning text: strip, lower, replace
 - Simple parsing patterns used in data analysis
-
 
 """
 
@@ -35,7 +32,7 @@ if __name__ == "__main__":
 
 
 # ============================================================
-# Add string basics: create, index, slice
+# String basics: create, index, slice
 # ============================================================
 
 def main() -> None:
@@ -64,7 +61,7 @@ def main() -> None:
 
 
 # ============================================================
-# Add common string methods + cleaning patterns
+# Common string methods + cleaning patterns
 # ============================================================
 
 def main() -> None:
@@ -110,7 +107,7 @@ def main() -> None:
 
 
 # ============================================================
-# Add f-strings, number formatting, and parsing
+# f-strings, number formatting, and parsing
 # ============================================================
 
 def main() -> None:
