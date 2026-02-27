@@ -30,7 +30,36 @@ def section(title: str) -> None:
 
 def main() -> None:
     section("Errors and Exceptions")
-    print("This lesson will introduce try/except and safe error handling.")
+    print("Here you should see try/except and safe error handling.")
+
+
+# ==============================================================
+# Basic try/except examples
+# ==============================================================
+
+def main() -> None:
+    section("1) A common error: dividing by zero")
+
+    x = 10
+    y = 0
+
+    try:
+        result = x / y
+        print(f"result = {result}")
+    except ZeroDivisionError:
+        print("You cannot divide by zero. Handle this case in your code.")
+
+    section("2) Another common error: invalid type conversion")
+
+    text = "not_a_number"
+
+    try:
+        value = int(text)
+        print(f"value = {value}")
+    except ValueError:
+        print(f"Cannot convert '{text}' to an integer.")
+
+
 
 
 
