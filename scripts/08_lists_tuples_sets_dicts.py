@@ -60,6 +60,43 @@ def main() -> None:
     print(f"Grown incomes: {grown}")
 
 
+# ==============================================================
+# tuples and sets
+# ==============================================================
+
+def main() -> None:
+    section("1) Lists")
+
+    incomes = [32000, 41000, 29000, 50000]
+    print(f"incomes = {incomes}")
+
+    section("2) Tuples")
+
+    # Tuples are immutable (cannot change after creation)
+    coordinates = (37.57, -84.29)
+    print(f"coordinates = {coordinates}")
+    print(f"Latitude: {coordinates[0]}")
+
+    # coordinates[0] = 0  # This would raise an error
+
+    section("3) Sets")
+
+    states = ["KY", "CA", "KY", "TX", "CA"]
+    unique_states = set(states)  # Removes duplicates
+    print(f"Original states: {states}")
+    print(f"Unique states: {unique_states}")
+
+    section("Set operations")
+
+    a = {"KY", "CA", "TX"}
+    b = {"TX", "NY"}
+
+    print(f"Union: {a | b}")
+    print(f"Intersection: {a & b}")
+
+
+
+
 
 
 if __name__ == "__main__":
