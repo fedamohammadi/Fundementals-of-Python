@@ -97,6 +97,58 @@ def main() -> None:
         print(f"safe_int('{v}') -> {safe_int(v, default=-1)}")
 
 
+# ==============================================================
+# else/finally and raise
+# ==============================================================
+
+def mean(values: list[float]) -> float:
+    """
+    Compute the mean of a list of floats.
+    Raise a clear error if the list is empty.
+    """
+    if len(values) == 0:
+        raise ValueError("mean() received an empty list. Cannot compute mean.")
+    return sum(values) / len(values)
+
+
+def main() -> None:
+    section("1) try/except with else and finally")
+
+    x = 10
+    y = 2
+
+    try:
+        result = x / y
+    except ZeroDivisionError:
+        print("Division by zero occurred.")
+    else:
+        # else runs only if no exception happened
+        print(f"Division succeeded: {result}")
+    finally:
+        # finally runs no matter what
+        print("This always runs (cleanup/logging).")
+
+    section("2) Safe parsing in messy data")
+
+    raw_values = ["10", "5", "bad", None, "20"]
+
+    parsed_values: list[int] = []
+    for v in raw_values:
+        try:
+            parsed_values.append(int(v))  # type: ignore[arg-type]
+        except (ValueError, TypeError):
+            # In real work, you may log this rather than printing it.
+            print(f"Skipping invalid value: {v}")
+
+    print(f"Parsed values: {parsed_values}")
+
+    section("3) Fail fast: raise a clear error")
+
+    try:
+        print(f"mean([1.0, 2.0, 3.0]) = {mean([1.0, 2.0, 3.0])}")
+        print(f"mean([]) = {mean([])}")
+    except ValueError as e:
+        print(f"Caught error: {e}")
 
 
 if __name__ == "__main__":
