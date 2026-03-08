@@ -94,6 +94,49 @@ def main() -> None:
     print(f"unique_squares: {unique_squares}")
 
 
+# ==============================================================
+# Generator expressions
+# ==============================================================
+
+def main() -> None:
+    section("1) List comprehension")
+
+    numbers = [1, 2, 3, 4, 5]
+    squares = [x**2 for x in numbers]
+
+    print(f"squares: {squares}")
+
+    section("2) Dictionary comprehension")
+
+    states = ["KY", "VA", "OH"]
+    state_index = {state: i for i, state in enumerate(states)}
+
+    print(f"state_index: {state_index}")
+
+    section("3) Set comprehension")
+
+    values = [1, 2, 2, 3, 3, 4]
+    unique_squares = {x**2 for x in values}
+
+    print(f"unique_squares: {unique_squares}")
+
+    section("4) Generator expressions")
+
+    numbers = range(1, 6)
+
+    # Generator expressions use parentheses instead of brackets
+    # They generate values lazily (one at a time).
+    squares_gen = (x**2 for x in numbers)
+
+    print("Generator output:")
+    for val in squares_gen:
+        print(val)
+
+    # Example: sum of squares without storing everything in memory
+    big_sum = sum(x**2 for x in range(1, 1_000_001))
+
+    print("Computed sum of squares for 1..1,000,000 using a generator.")
+    print(f"Result: {big_sum}")
 
 
 if __name__ == "__main__":
