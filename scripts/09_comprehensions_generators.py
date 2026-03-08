@@ -61,7 +61,40 @@ def main() -> None:
     print(f"incomes: {incomes}")
     print(f"income (thousands) above 40k: {high_income_k}")
     
-    
+# ==============================================================
+# Dictionary and set comprehensions
+# ==============================================================
+
+def main() -> None:
+    section("1) List comprehension")
+
+    numbers = [1, 2, 3, 4, 5]
+    squares = [x**2 for x in numbers]
+
+    print(f"squares: {squares}")
+
+    section("2) Dictionary comprehension")
+
+    states = ["KY", "VA", "OH"]
+
+    # Map each state to an index value
+    state_index = {state: i for i, state in enumerate(states)}
+
+    print(f"states: {states}")
+    print(f"state_index: {state_index}")
+
+    section("3) Set comprehension")
+
+    values = [1, 2, 2, 3, 3, 4]
+
+    # Extract unique squared values
+    unique_squares = {x**2 for x in values}
+
+    print(f"values: {values}")
+    print(f"unique_squares: {unique_squares}")
+
+
+
 
 if __name__ == "__main__":
     main()
