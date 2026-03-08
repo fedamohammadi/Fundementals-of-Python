@@ -1,0 +1,4 @@
+Research Notes
+---------------
+Python is useful for reproducible research.
+Always document your workflow clearly.
