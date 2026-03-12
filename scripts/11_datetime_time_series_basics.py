@@ -1,11 +1,30 @@
+"""
+Concepts covered:
+- Creating dates and datetimes
+- Formatting dates as strings
+- Parsing strings into dates
+- Timedelta arithmetic
+- Iterating over time periods
+- Basic time series style examples
+"""
 
-favorites = ["Apples", "Oranges", "Pasta", "Kabuli Palow"]
+from datetime import date, datetime, timedelta
 
-for item in favorites:
-    print("I Like", item)
 
-count = 0
+def section(title: str) -> None:
+    """Print a clean section header."""
+    print("\n" + "=" * 60)
+    print(title)
+    print("=" * 60)
 
-while count < len(favorites):
-    print('One of my favorite desserts is', favorites[count]);
-    count += 1
+
+def main() -> None:
+    section("Datetime and Time Series Basics")
+    print("This lesson introduces Python dates, times, and simple time-based workflows.")
+
+
+
+
+
+if __name__ == "__main__":
+    main()
