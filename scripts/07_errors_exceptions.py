@@ -3,16 +3,6 @@
 # ==============================================================
 
 """
-Purpose:
---------
-Learn how to handle errors using exceptions.
-In research code, errors happen all the time:
-- messy data
-- missing values
-- unexpected types
-- divide-by-zero problems
-- file paths that do not exist
-
 Concepts covered:
 - Common error types
 - try / except
@@ -26,11 +16,6 @@ def section(title: str) -> None:
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
-
-
-def main() -> None:
-    section("Errors and Exceptions")
-    print("Here you should see try/except and safe error handling.")
 
 
 # ==============================================================

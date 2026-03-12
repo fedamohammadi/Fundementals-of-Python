@@ -139,11 +139,6 @@ def main() -> None:
     for key, value in observation.items():
         print(f"{key} -> {value}")
 
-    section("Why dictionaries are important")
-
-    print("In data analysis, each row of data is often represented as a dictionary.")
-    print("Later, pandas will generalize this idea into DataFrames.")
-
 
 
 if __name__ == "__main__":

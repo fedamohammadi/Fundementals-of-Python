@@ -1,15 +1,4 @@
 """
-04_booleans_conditionals.py
-
-Purpose:
---------
-Learn boolean logic and conditional statements.
-This is essential for research work because you constantly make decisions like:
-- filter rows
-- handle missing values
-- apply rules based on thresholds
-- build indicators (0/1 variables)
-
 Concepts covered (progressively):
 - bool type and comparisons
 - Logical operators: and, or, not
@@ -22,11 +11,6 @@ def section(title: str) -> None:
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
-
-
-def main() -> None:
-    section("Booleans and Conditionals")
-    print("This lesson will introduce boolean logic and if-statements.")
 
 
 # ==============================================================
@@ -196,6 +180,9 @@ def main() -> None:
         print("text_value is missing (empty/blank string)")
     else:
         print(f"text_value is present: '{text_value}'")
+        
+        
+        
 
 if __name__ == "__main__":
     main()

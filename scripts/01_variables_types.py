@@ -1,8 +1,4 @@
 """
-Purpose:
---------
-Learn what variables are, what "types" are, and why types matter in data work.
-
 Concepts covered:
 - Assigning variables
 - Common Python types: int, float, str, bool
@@ -19,11 +15,6 @@ def section(title: str) -> None:
     print(title)
     print("=" * 60)
 
-
-def main() -> None:
-    section("Variables and Types")
-
-    print("This lesson will introduce Python variables and basic data types.")
 
 
 def main() -> None:
@@ -124,8 +115,7 @@ def main() -> None:
     is_above_threshold = income_monthly > threshold
     print(f"Is monthly income above {threshold}? {is_above_threshold}")
 
-    section("Done")
-    print("Next lesson: working with strings and text formatting.")
+   
 
 
 if __name__ == "__main__":

@@ -1,10 +1,4 @@
 """
-Purpose:
---------
-Learn how Python handles numbers and basic math, and how randomness works.
-These ideas show up everywhere in research: simulation, bootstrapping,
-Monte Carlo, and basic data transformations.
-
 Concepts covered (progressively):
 - int vs float
 - Arithmetic operators
@@ -15,10 +9,6 @@ Concepts covered (progressively):
 - Reproducibility with seeds
 
 """
-
-# ==============================================================
-# numbers/math/random lesson skeleton
-# ==============================================================
 
 import math
 import random

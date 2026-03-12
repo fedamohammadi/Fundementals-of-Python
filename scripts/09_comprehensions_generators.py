@@ -1,8 +1,4 @@
 """
-Purpose:
---------
-Learn comprehensions and generators.
-
 These are extremely common in data analysis because they allow
 you to transform, filter, and build collections in a clean way.
 

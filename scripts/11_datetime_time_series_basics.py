@@ -115,8 +115,6 @@ def main() -> None:
     for i, change in enumerate(changes, start=1):
         print(f"{dates[i - 1]} -> {dates[i]}: {change:+.2%}")
 
-    section("6) Why this matters")
-
 
 
 

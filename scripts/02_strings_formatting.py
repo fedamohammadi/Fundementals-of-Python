@@ -1,10 +1,4 @@
 """
-Purpose:
---------
-Learn how to work with text data in Python.
-Strings are everywhere in research: names, categories, IDs, survey responses,
-dates read as text, messy labels, and scraped web text.
-
 Concepts covered (progressively):
 - Creating strings
 - Indexing and slicing
@@ -20,15 +14,6 @@ def section(title: str) -> None:
     print("\n" + "=" * 60)
     print(title)
     print("=" * 60)
-
-
-def main() -> None:
-    section("Strings and Formatting")
-    print("This lesson will introduce string basics and clean formatting.")
-
-
-if __name__ == "__main__":
-    main()
 
 
 # ============================================================
@@ -175,8 +160,7 @@ def main() -> None:
     print(f"raw: '{raw_col}'")
     print(f"standardized: '{standardized}'")
 
-    section("Done")
-    print("Next lesson: numbers, math operations, and working with randomness.")
+
 
 
 if __name__ == "__main__":

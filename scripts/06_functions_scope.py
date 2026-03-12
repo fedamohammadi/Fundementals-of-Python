@@ -3,17 +3,6 @@
 # ==============================================================
 
 """
-Purpose:
---------
-Learn how to define and use functions properly.
-Understand local vs global scope.
-
-Functions are important in research code because they:
-- Avoid repetition
-- Make logic reusable
-- Improve clarity
-- Help structure complex workflows
-
 Concepts covered:
 - Defining functions
 - Parameters and return values
@@ -29,14 +18,10 @@ def section(title: str) -> None:
     print("=" * 60)
 
 
-# ===============================
-# Main
-# ===============================
 
 def main() -> None:
     section("Functions and Scope")
     print("This doc introduces reusable functions and variable scope.")
-
 
 # ==============================================================
 # Basic function definitions and returns
@@ -147,11 +132,8 @@ def main() -> None:
     # Uncommenting the next line would cause an error,
     # because local_value does not exist outside scope_example().
     # print(local_value)
-
-    section("Why scope matters")
-
-    print("Functions protect variables from interfering with each other.")
-    print("This prevents hard-to-debug errors in research code.")
+    
+    
 
 
 if __name__ == "__main__":

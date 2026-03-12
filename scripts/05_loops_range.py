@@ -2,17 +2,7 @@
 # loops/range
 # ==============================================================
 """
-Purpose:
---------
-Learn how to repeat actions using loops.
-Loops are used constantly in research for:
-- iterating over rows (when you really must)
-- running simulations
-- bootstrapping
-- cleaning multiple variables
-- applying rules to many items
-
-Concepts covered (progressively):
+Concepts covered:
 - for loops
 - while loops
 - range()
@@ -27,14 +17,6 @@ def section(title: str) -> None:
     print(title)
     print("=" * 60)
 
-
-# ===============================
-# Main
-# ===============================
-
-def main() -> None:
-    section("Loops and range()")
-    print("This lesson will introduce for-loops, while-loops, and range().")
 
 # ==============================================================
 # for-loops and range basics
@@ -182,6 +164,10 @@ def main() -> None:
     print(f"Trials: {trials}")
     print(f"Hits (divisible by 7): {hits}")
     print(f"Estimated probability: {prob_estimate:.3f}")
+
+
+
+
 
 if __name__ == "__main__":
     main()

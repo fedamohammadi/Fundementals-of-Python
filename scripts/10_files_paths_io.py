@@ -1,8 +1,4 @@
 """
-Purpose:
---------
-Learn how to read from and write to text and CSV files in Python.
-
 Concepts covered:
 - pathlib for safe file paths
 - writing text files
