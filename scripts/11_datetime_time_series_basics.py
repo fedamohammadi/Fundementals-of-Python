@@ -17,11 +17,6 @@ def section(title: str) -> None:
     print(title)
     print("=" * 60)
 
-
-def main() -> None:
-    section("Datetime and Time Series Basics")
-
-
 # ==============================================================
 # Creating dates and formatting
 # ==============================================================
@@ -46,6 +41,44 @@ def main() -> None:
     print(today.strftime("%Y-%m-%d"))
     print(now.strftime("%B %d, %Y"))
     print(now.strftime("%Y-%m-%d %H:%M:%S"))
+
+# ==============================================================
+# Parsing and timedelta arithmetic
+# ==============================================================
+
+    today = date(2026, 3, 11)
+    now = datetime(2026, 3, 11, 14, 30, 0)
+
+    print(f"today = {today}")
+    print(f"now = {now}")
+
+    section("2) Parsing strings into dates")
+
+    raw_date = "2026-03-11"
+    parsed_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+
+    print(f"raw_date = {raw_date}")
+    print(f"parsed_date = {parsed_date}")
+
+    section("3) Timedelta arithmetic")
+
+    one_week = timedelta(days=7)
+    next_week = today + one_week
+    last_week = today - one_week
+
+    print(f"today = {today}")
+    print(f"next_week = {next_week}")
+    print(f"last_week = {last_week}")
+
+    section("4) Days between dates")
+
+    start = date(2026, 1, 1)
+    end = date(2026, 3, 11)
+
+    diff = end - start
+    print(f"Days between {start} and {end}: {diff.days}")
+
+
 
 
 if __name__ == "__main__":
