@@ -79,6 +79,46 @@ def main() -> None:
     print(f"Days between {start} and {end}: {diff.days}")
 
 
+# ==============================================================
+# A simple time series style examples
+# ==============================================================
+
+    one_week = timedelta(days=7)
+    print(f"today = {today}")
+    print(f"today + 7 days = {today + one_week}")
+    print(f"today - 7 days = {today - one_week}")
+
+    section("4) Building a simple time series")
+
+    # A simple list of monthly observations
+    dates = [
+        date(2025, 10, 1),
+        date(2025, 11, 1),
+        date(2025, 12, 1),
+        date(2026, 1, 1),
+        date(2026, 2, 1),
+    ]
+    inflation_rates = [0.021, 0.023, 0.024, 0.026, 0.025]
+
+    for d, rate in zip(dates, inflation_rates):
+        print(f"{d}: {rate:.2%}")
+
+    section("5) Example: month-to-month change")
+
+    # Computing simple changes between consecutive values
+    changes = []
+    for i in range(1, len(inflation_rates)):
+        change = inflation_rates[i] - inflation_rates[i - 1]
+        changes.append(change)
+
+    print("Month-to-month changes:")
+    for i, change in enumerate(changes, start=1):
+        print(f"{dates[i - 1]} -> {dates[i]}: {change:+.2%}")
+
+    section("6) Why this matters")
+
+
+
 
 
 if __name__ == "__main__":
