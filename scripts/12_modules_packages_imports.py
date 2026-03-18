@@ -69,6 +69,42 @@ def main() -> None:
     print("For example, pandas is usually imported as pd and numpy as np.")
 
 
+# ==============================================================
+# Modules vs packages explanation
+# ==============================================================
+
+from pathlib import Path
+
+
+def main() -> None:
+    section("1) What is a module?")
+
+    print("A module is a single Python file that contains code.")
+    print("Examples: math, random, pathlib")
+
+    section("2) What is a package?")
+
+    print("A package is a folder containing multiple Python modules.")
+    print("Large libraries like pandas and statsmodels are packages.")
+
+    section("3) Different import styles")
+
+    print(f"math.sqrt(25) = {math.sqrt(25)}")
+    print(f"sqrt(36) = {sqrt(36)}")
+    print(f"log(10) = {log(10):.4f}")
+
+    data = [10, 20, 30, 40]
+    print(f"Mean using statistics alias: {stats.mean(data)}")
+
+    section("4) Another useful standard library import")
+
+    # pathlib helps you work with file paths in a safer and cleaner way
+    data_path = Path("data") / "wage1.csv"
+    print(f"Path object: {data_path}")
+
 
 if __name__ == "__main__":
     main()
+
+
+
