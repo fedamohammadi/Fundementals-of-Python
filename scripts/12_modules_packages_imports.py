@@ -36,10 +36,37 @@ def main() -> None:
     random.seed(42)
     print(f"random.randint(1, 10) = {random.randint(1, 10)}")
 
-    section("2) Why modules matter")
+    section("2) Why modules are good")
 
     print("Modules help organize related functions and tools.")
     print("For example, the math module contains many mathematical functions.")
+
+# ==============================================================
+# import styles and aliases
+# ==============================================================
+
+from math import sqrt, log
+import statistics as stats
+
+
+def main() -> None:
+    section("1) Different import styles")
+
+    # Full module import
+    print(f"math.sqrt(25) = {math.sqrt(25)}")
+
+    # Import specific functions directly
+    print(f"sqrt(36) = {sqrt(36)}")
+    print(f"log(10) = {log(10):.4f}")
+
+    # Alias import keeps code shorter
+    data = [10, 20, 30, 40]
+    print(f"Mean using statistics alias: {stats.mean(data)}")
+
+    section("2) Why aliases are useful")
+
+    print("Aliases are common when module names are long.")
+    print("For example, pandas is usually imported as pd and numpy as np.")
 
 
 
