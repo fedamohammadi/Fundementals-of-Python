@@ -51,7 +51,36 @@ def main() -> None:
         print("No second argument was provided.")
 
 
+# ==============================================================
+# Simple argument parsing + venv reminders
+# ==============================================================
 
+def main() -> None:
+    section("1) sys.argv basics")
+
+    print(f"Full argument list: {sys.argv}")
+    print(f"Script name: {sys.argv[0]}")
+
+    section("2) Read command line arguments")
+
+    if len(sys.argv) > 1:
+        name = sys.argv[1]
+    else:
+        name = "Student"
+
+    if len(sys.argv) > 2:
+        topic = sys.argv[2]
+    else:
+        topic = "Python"
+
+    print(f"Hello, {name}!")
+    print(f"Today's topic: {topic}")
+
+    section("3) Why CLI arguments matter")
+
+    # Command line arguments let you reuse the same script
+    # with different inputs without editing the code itself.
+    print("CLI arguments make scripts more flexible and reusable.")
 
 
 if __name__ == "__main__":
