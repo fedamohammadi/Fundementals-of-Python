@@ -76,11 +76,6 @@ def main() -> None:
     print(f"Hello, {name}!")
     print(f"Today's topic: {topic}")
 
-    section("3) Why CLI arguments matter")
-
-    # Command line arguments let you reuse the same script
-    # with different inputs without editing the code itself.
-    print("CLI arguments make scripts more flexible and reusable.")
 
 
 if __name__ == "__main__":
