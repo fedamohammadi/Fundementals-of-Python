@@ -41,5 +41,33 @@ def main() -> None:
     print(f"student_2 major: {student_2.major}")
 
 
+# ==============================================================
+# Instance methods
+# ==============================================================
+
+class Student:
+    def __init__(self, name: str, major: str, gpa: float) -> None:
+        self.name = name
+        self.major = major
+        self.gpa = gpa
+
+    def describe(self) -> str:
+        return f"{self.name} studies {self.major} and has GPA {self.gpa:.2f}"
+
+    def is_honors(self) -> bool:
+        return self.gpa >= 3.5
+
+
+def main() -> None:
+    section("1) Class with methods")
+
+    student = Student("Feda", "Economics", 3.70)
+
+    print(student.describe())
+    print(f"Honors status: {student.is_honors()}")
+    
+    
+    
+    
 if __name__ == "__main__":
     main()
