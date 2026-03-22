@@ -20,7 +20,28 @@ def main() -> None:
     print("Type Hints and Style")
 
 
+# ==============================================================
+# Basic function type hints
+# ==============================================================
 
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+
+
+def main() -> None:
+    section("1) Basic type hints")
+
+    print(add(3, 5))
+    print(greet("Feda"))
+
+    section("2) Why type hints help")
+
+    print("Type hints make code easier to understand.")
+    print("They also help editors catch mistakes earlier.")
 
 
 if __name__ == "__main__":
