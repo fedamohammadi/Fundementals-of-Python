@@ -16,7 +16,7 @@ def section(title: str) -> None:
 
 
 def main() -> None:
-    section("OOP Minimum for Research")
+    print("OOP Minimum for Research")
  
 
 # ==============================================================
@@ -121,3 +121,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
