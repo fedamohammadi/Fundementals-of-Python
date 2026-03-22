@@ -31,6 +31,28 @@ def main() -> None:
     print(f"Script name: {sys.argv[0]}")
 
 
+# ==============================================================
+# Optional command line arguments
+# ==============================================================
+    section("2) Optional arguments")
+
+    if len(sys.argv) > 1:
+        name = sys.argv[1]
+        print(f"Hello, {name}!")
+    else:
+        print("No name was passed on the command line.")
+
+    section("3) Second argument example")
+
+    if len(sys.argv) > 2:
+        topic = sys.argv[2]
+        print(f"Your topic is: {topic}")
+    else:
+        print("No second argument was provided.")
+
+
+
+
 
 if __name__ == "__main__":
     main()
