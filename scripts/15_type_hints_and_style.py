@@ -83,6 +83,34 @@ def main() -> None:
     print(f"Major: {major_field}")
 
 
+# ==============================================================
+# Style rules and final examples
+# ==============================================================
+
+def main() -> None:
+    section("1) Basic type hints")
+
+    print(add(3, 5))
+    print(greet("Feda"))
+
+    section("2) Type hints with collections")
+
+    incomes = [32000.0, 41000.0, 29000.0, 50000.0]
+    print(f"Average income: {compute_average(incomes):.2f}")
+
+    states = ["KY", "VA", "KY", "OH", "VA", "KY"]
+    print(f"State counts: {count_states(states)}")
+
+    section("3) Style examples")
+
+    # Clear variable names are better than short vague names.
+    monthly_income = 3500.0
+    annual_income = monthly_income * 12
+
+    print(f"Monthly income: {monthly_income}")
+    print(f"Annual income: {annual_income}")
+
+
 
 
 if __name__ == "__main__":
