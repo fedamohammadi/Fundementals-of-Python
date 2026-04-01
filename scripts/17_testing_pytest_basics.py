@@ -58,7 +58,18 @@ def main() -> None:
     print("All tests passed.")
 
 
+# ==============================================================
+# Organized test runner
+# ==============================================================
 
+def run_tests() -> None:
+    test_add()
+    test_compute_average()
+
+
+def main() -> None:
+    run_tests()
+    print("All tests passed.")
 
 
 if __name__ == "__main__":
