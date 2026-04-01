@@ -28,6 +28,37 @@ def main() -> None:
     print("All tests passed.")
 
 
+# ==============================================================
+# More realistic example + edge cases
+# ==============================================================
+
+def compute_average(values: list[float]) -> float:
+    if len(values) == 0:
+        raise ValueError("Empty list")
+    return sum(values) / len(values)
+
+
+def test_compute_average() -> None:
+    assert compute_average([10.0, 20.0, 30.0]) == 20.0
+
+    # Edge case: single value
+    assert compute_average([5.0]) == 5.0
+
+    # Edge case: empty list should raise error
+    try:
+        compute_average([])
+        assert False  # Should not reach here
+    except ValueError:
+        assert True
+
+
+def main() -> None:
+    test_add()
+    test_compute_average()
+    print("All tests passed.")
+
+
+
 
 
 if __name__ == "__main__":
