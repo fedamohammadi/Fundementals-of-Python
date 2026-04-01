@@ -42,6 +42,31 @@ def main() -> None:
 
     print(f"Average: {result}")
 
+# ==============================================================
+# logging basics
+# ==============================================================
+
+def main() -> None:
+    section("1) Logging setup")
+
+    logging.basicConfig(level=logging.INFO)
+
+    logging.info("Program started")
+    logging.warning("This is a warning example")
+
+    section("2) Logging inside logic")
+
+    values = [10, 0, 30]
+
+    for v in values:
+        if v == 0:
+            logging.error("Encountered zero value")
+        else:
+            logging.info(f"Processing value {v}")
+
+
+
+
 if __name__ == "__main__":
     main()
 
