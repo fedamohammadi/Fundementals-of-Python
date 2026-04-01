@@ -65,6 +65,47 @@ def main() -> None:
             logging.info(f"Processing value {v}")
 
 
+# ==============================================================
+# Structured logging example
+# ==============================================================
+
+def compute_average(values: list[float]) -> float:
+    if len(values) == 0:
+        logging.error("Empty list provided to compute_average")
+        raise ValueError("Cannot compute average of empty list")
+
+    return sum(values) / len(values)
+
+
+def main() -> None:
+    section("1) Logging setup")
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s:%(message)s"
+    )
+
+    logging.info("Program started")
+
+    section("2) Safe computation with logging")
+
+    data = [10.0, 20.0, 30.0]
+
+    try:
+        avg = compute_average(data)
+        logging.info(f"Computed average: {avg:.2f}")
+    except ValueError as e:
+        logging.error(f"Error: {e}")
+
+    section("3) Example with bad input")
+
+    bad_data: list[float] = []
+
+    try:
+        avg = compute_average(bad_data)
+    except ValueError as e:
+        logging.error(f"Handled error: {e}")
+
 
 
 if __name__ == "__main__":
