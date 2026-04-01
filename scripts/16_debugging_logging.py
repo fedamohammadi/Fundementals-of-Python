@@ -16,9 +16,31 @@ def section(title: str) -> None:
 
 def main() -> None:
     section("Debugging and Logging")
-    print("This lesson introduces basic debugging techniques.")
 
+# ==============================================================
+# Print debugging and assertions
+# ==============================================================
 
+def main() -> None:
+    section("1) Print debugging")
+
+    values = [10, 20, 30]
+
+    total = 0
+    for v in values:
+        print(f"Adding {v} to total={total}")
+        total += v
+
+    print(f"Final total: {total}")
+
+    section("2) Assertions")
+
+    result = total / len(values)
+
+    # Assert checks conditions during development
+    assert result > 0, "Average should be positive"
+
+    print(f"Average: {result}")
 
 if __name__ == "__main__":
     main()

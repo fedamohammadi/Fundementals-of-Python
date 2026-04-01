@@ -15,7 +15,6 @@ def section(title: str) -> None:
     print("=" * 60)
 
 
-
 def main() -> None:
     print("Type Hints and Style")
 
