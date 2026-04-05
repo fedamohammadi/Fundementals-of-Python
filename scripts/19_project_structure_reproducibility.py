@@ -8,7 +8,9 @@ Project Structure and Reproducibility
 """
 
 import json
+import logging
 import random
+import sys
 from pathlib import Path
 
 
@@ -138,6 +140,54 @@ def demo_seeds() -> None:
         print("numpy not available — skipping numpy seed demo")
 
 
+# ==============================================================
+# Reusable logging setup
+# ==============================================================
+
+def get_logger(name: str, log_file: Path | None = None) -> logging.Logger:
+    """Return a logger that writes to console and optionally to a file."""
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+
+    if logger.handlers:
+        return logger  # avoid duplicate handlers on re-import
+
+    fmt = logging.Formatter("%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
+                            datefmt="%H:%M:%S")
+
+    console = logging.StreamHandler(sys.stdout)
+    console.setLevel(logging.DEBUG)
+    console.setFormatter(fmt)
+    logger.addHandler(console)
+
+    if log_file:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        fh = logging.FileHandler(log_file)
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(fmt)
+        logger.addHandler(fh)
+
+    return logger
+
+
+def demo_logging() -> None:
+    log_path = LOGS_DIR / "demo.log"
+    log = get_logger("project19", log_file=log_path)
+
+    log.debug("Debug: fine-grained detail for development")
+    log.info("Info: normal progress messages")
+    log.warning("Warning: something unexpected but recoverable")
+    log.error("Error: something went wrong")
+
+    print(f"\nLog also written to: {log_path}")
+
+    # Close handlers before deleting the file (required on Windows)
+    for handler in log.handlers[:]:
+        handler.close()
+        log.removeHandler(handler)
+    log_path.unlink(missing_ok=True)
+
+
 def main() -> None:
     print("=" * 50)
     print("1. pathlib — portable project paths")
@@ -155,6 +205,12 @@ def main() -> None:
     print("3. Seeds and reproducibility")
     print("=" * 50)
     demo_seeds()
+
+    print()
+    print("=" * 50)
+    print("4. Reusable logging setup")
+    print("=" * 50)
+    demo_logging()
 
 
 if __name__ == "__main__":
