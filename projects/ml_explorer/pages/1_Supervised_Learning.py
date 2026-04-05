@@ -139,7 +139,7 @@ with tab2:
         colors = [PURPLE if c == 0 else CYAN for c in y2]
         fig2.add_trace(go.Scatter(x=X2s[:, 0], y=X2s[:, 1], mode="markers",
                                    marker=dict(color=colors, size=5, opacity=0.85,
-                                               line=dict(width=0.5, color="#ffffff33")),
+                                               line=dict(width=0.5, color="rgba(255,255,255,0.2)")),
                                    name="Samples"))
         fig2.update_layout(template=PLOTLY_TEMPLATE, height=400,
                             title=f"Decision Boundary  (C={C_val}, acc={acc2:.2%})",
@@ -196,7 +196,7 @@ with tab3:
         fig3.add_trace(go.Scatter(x=X3s[:, 0], y=X3s[:, 1], mode="markers",
                                    marker=dict(color=[PURPLE if c == 0 else CYAN for c in y3],
                                                size=5, opacity=0.9,
-                                               line=dict(width=0.5, color="#00000044")),
+                                               line=dict(width=0.5, color="rgba(0,0,0,0.27)")),
                                    name="Samples"))
         fig3.update_layout(template=PLOTLY_TEMPLATE, height=400,
                             title=f"Decision Tree — depth={depth3}  acc={acc3:.2%}",
