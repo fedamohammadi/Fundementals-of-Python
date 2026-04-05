@@ -14,3 +14,5 @@ sqlalchemy
 jupyter
 pytest
 pandas-datareader
+streamlit
+plotly
