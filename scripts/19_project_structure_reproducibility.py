@@ -7,6 +7,7 @@ Project Structure and Reproducibility
 - putting it all together
 """
 
+import json
 from pathlib import Path
 
 
@@ -50,11 +51,60 @@ def demo_pathlib() -> None:
         print(f"  {s.name}")
 
 
+# ==============================================================
+# Managing config with JSON
+# ==============================================================
+
+DEFAULT_CONFIG: dict = {
+    "seed": 42,
+    "n_samples": 1000,
+    "output_format": "csv",
+    "verbose": True,
+}
+
+CONFIG_PATH = OUTPUT_DIR / "config.json"
+
+
+def save_config(config: dict, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as f:
+        json.dump(config, f, indent=2)
+    print(f"Config saved to {path}")
+
+
+def load_config(path: Path) -> dict:
+    with open(path) as f:
+        return json.load(f)
+
+
+def demo_config() -> None:
+    # Save default config
+    save_config(DEFAULT_CONFIG, CONFIG_PATH)
+
+    # Load it back and inspect
+    cfg = load_config(CONFIG_PATH)
+    print(f"Loaded config: {cfg}")
+
+    # Override a single value and re-save
+    cfg["n_samples"] = 5000
+    save_config(cfg, CONFIG_PATH)
+    print(f"Updated n_samples: {load_config(CONFIG_PATH)['n_samples']}")
+
+    # Clean up the demo file
+    CONFIG_PATH.unlink(missing_ok=True)
+
+
 def main() -> None:
     print("=" * 50)
     print("1. pathlib — portable project paths")
     print("=" * 50)
     demo_pathlib()
+
+    print()
+    print("=" * 50)
+    print("2. Config management with JSON")
+    print("=" * 50)
+    demo_config()
 
 
 if __name__ == "__main__":
