@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 import pandas as pd
-import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import streamlit as st
 from sklearn.datasets import (load_breast_cancer, load_iris, load_wine,
@@ -246,14 +245,24 @@ else:
     with col_cm:
         cm = confusion_matrix(y_test, y_pred)
         labels_cm = class_names if class_names else [str(i) for i in sorted(set(y))]
-        fig_cm = ff.create_annotated_heatmap(
-            cm.tolist(), x=labels_cm, y=labels_cm,
+        n_lbl = len(labels_cm)
+        fig_cm = go.Figure(go.Heatmap(
+            z=cm.tolist(),
+            x=labels_cm,
+            y=list(reversed(labels_cm)),
             colorscale=[[0, "#14142B"], [1, PURPLE]],
-            showscale=True)
+            showscale=True))
+        for i in range(n_lbl):
+            for j in range(n_lbl):
+                fig_cm.add_annotation(
+                    x=labels_cm[j],
+                    y=labels_cm[n_lbl - 1 - i],
+                    text=str(cm[i, j]),
+                    showarrow=False,
+                    font=dict(color="white", size=14, family="monospace"))
         fig_cm.update_layout(template=PLOTLY_TEMPLATE, height=380,
                               title="Confusion Matrix",
-                              xaxis_title="Predicted", yaxis_title="Actual",
-                              yaxis=dict(autorange="reversed"))
+                              xaxis_title="Predicted", yaxis_title="Actual")
         st.plotly_chart(fig_cm, use_container_width=True)
 
     # ROC curve (binary only; for multiclass show per-class)
