@@ -188,6 +188,48 @@ def demo_logging() -> None:
     log_path.unlink(missing_ok=True)
 
 
+# ==============================================================
+# Putting it all together — a reproducible analysis run
+# ==============================================================
+
+def run_analysis(config: dict) -> dict:
+    """Simulate a full reproducible pipeline using config values."""
+    log = get_logger("run_analysis")
+
+    set_seeds(config["seed"])
+    log.info(f"Seed set to {config['seed']}")
+
+    n = config["n_samples"]
+    data = [random.gauss(0, 1) for _ in range(n)]
+    mean = sum(data) / len(data)
+    log.info(f"Generated {n} samples — mean: {mean:.4f}")
+
+    results = {"n": n, "mean": round(mean, 6), "seed": config["seed"]}
+    log.info(f"Results: {results}")
+    return results
+
+
+def demo_full_pipeline() -> None:
+    cfg = DEFAULT_CONFIG.copy()
+
+    # Save config so the run is fully documented
+    cfg_path = OUTPUT_DIR / "run_config.json"
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    save_config(cfg, cfg_path)
+
+    results = run_analysis(cfg)
+    print(f"Final results: {results}")
+
+    # Clean up
+    cfg_path.unlink(missing_ok=True)
+
+    # Close any open handlers to avoid Windows file locks
+    log = logging.getLogger("run_analysis")
+    for handler in log.handlers[:]:
+        handler.close()
+        log.removeHandler(handler)
+
+
 def main() -> None:
     print("=" * 50)
     print("1. pathlib — portable project paths")
@@ -211,6 +253,12 @@ def main() -> None:
     print("4. Reusable logging setup")
     print("=" * 50)
     demo_logging()
+
+    print()
+    print("=" * 50)
+    print("5. Full reproducible pipeline")
+    print("=" * 50)
+    demo_full_pipeline()
 
 
 if __name__ == "__main__":
