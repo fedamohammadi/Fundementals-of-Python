@@ -15,7 +15,7 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression
 from sklearn.metrics import (accuracy_score, confusion_matrix, mean_absolute_error,
-                             mean_squared_error, r2_score)
+                             r2_score, root_mean_squared_error)
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
@@ -87,7 +87,7 @@ with tab1:
     m1.metric("Slope (β₁)",     f"{model.coef_[0]:.3f}")
     m2.metric("Intercept (β₀)", f"{model.intercept_:.3f}")
     m3.metric("R²",             f"{r2_score(y_raw, y_pred):.4f}")
-    m4.metric("RMSE",           f"{mean_squared_error(y_raw, y_pred, squared=False):.3f}")
+    m4.metric("RMSE",           f"{root_mean_squared_error(y_raw, y_pred):.3f}")
 
     divider()
     card("How it works",
