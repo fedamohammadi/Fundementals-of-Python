@@ -18,7 +18,8 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import PolynomialFeatures, StandardScaler
 
 from utils.styles import (AMBER, CHART_COLORS, CYAN, EMERALD, MUTED, PLOTLY_TEMPLATE,
-                          PURPLE, ROSE, TEXT, card, divider, info, inject_css, section)
+                          PURPLE, ROSE, TEXT, card, divider, hex_rgba, info,
+                          inject_css, section)
 
 st.set_page_config(page_title="Probability & Regression · ML Explorer",
                    page_icon="📈", layout="wide")
@@ -98,7 +99,7 @@ with tab1:
         else:
             fig_d.add_trace(go.Scatter(x=x_range, y=pdf, mode="lines",
                                         line=dict(color=PURPLE, width=3), name="PDF",
-                                        fill="tozeroy", fillcolor=PURPLE + "30"))
+                                        fill="tozeroy", fillcolor=hex_rgba(PURPLE, 0.19)))
         if show_cdf:
             fig_d.add_trace(go.Scatter(x=x_range, y=cdf, mode="lines",
                                         line=dict(color=AMBER, width=2, dash="dot"),
@@ -287,11 +288,11 @@ with tab3:
     # Bias / Variance breakdown
     fig_bv2 = go.Figure()
     fig_bv2.add_trace(go.Scatter(x=x_test, y=bias2, fill="tozeroy",
-                                  fillcolor=ROSE + "44",
+                                  fillcolor=hex_rgba(ROSE, 0.27),
                                   line=dict(color=ROSE, width=1.5),
                                   name="Bias²"))
     fig_bv2.add_trace(go.Scatter(x=x_test, y=variance, fill="tozeroy",
-                                  fillcolor=PURPLE + "44",
+                                  fillcolor=hex_rgba(PURPLE, 0.27),
                                   line=dict(color=PURPLE, width=1.5),
                                   name="Variance"))
     fig_bv2.update_layout(template=PLOTLY_TEMPLATE, height=250,
