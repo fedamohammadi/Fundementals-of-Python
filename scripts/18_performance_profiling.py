@@ -8,6 +8,7 @@ Performance Profiling in Python
 """
 
 import time
+import timeit
 
 
 # ==============================================================
@@ -39,11 +40,32 @@ def demo_perf_counter() -> None:
     print(f"fast_sum({n:,}):  {elapsed:.6f}s")
 
 
+# ==============================================================
+# Benchmarking snippets with timeit
+# ==============================================================
+
+def demo_timeit() -> None:
+    loops = 1000
+
+    t_slow = timeit.timeit("sum(range(10_000))", number=loops)
+    t_fast = timeit.timeit("10_000 * (10_000 - 1) // 2", number=loops)
+
+    print(f"sum(range(10_000)) x{loops}:  {t_slow:.4f}s")
+    print(f"formula x{loops}:             {t_fast:.4f}s")
+    print(f"Speedup: {t_slow / t_fast:.1f}x")
+
+
 def main() -> None:
     print("=" * 50)
     print("1. time.perf_counter")
     print("=" * 50)
     demo_perf_counter()
+
+    print()
+    print("=" * 50)
+    print("2. timeit")
+    print("=" * 50)
+    demo_timeit()
 
 
 if __name__ == "__main__":
