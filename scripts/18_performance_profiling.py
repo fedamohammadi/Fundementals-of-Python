@@ -7,8 +7,12 @@ Performance Profiling in Python
 - reading and acting on profiling results
 """
 
+import cProfile
+import io
+import pstats
 import time
 import timeit
+import tracemalloc
 
 
 # ==============================================================
@@ -55,6 +59,75 @@ def demo_timeit() -> None:
     print(f"Speedup: {t_slow / t_fast:.1f}x")
 
 
+# ==============================================================
+# Profiling functions with cProfile
+# ==============================================================
+
+def load_data(n: int) -> list[float]:
+    return [i * 0.5 for i in range(n)]
+
+
+def compute_stats(data: list[float]) -> dict:
+    mean = sum(data) / len(data)
+    variance = sum((x - mean) ** 2 for x in data) / len(data)
+    return {"mean": mean, "variance": variance}
+
+
+def analysis_pipeline(n: int = 100_000) -> dict:
+    data = load_data(n)
+    return compute_stats(data)
+
+
+def demo_cprofile() -> None:
+    profiler = cProfile.Profile()
+    profiler.enable()
+    analysis_pipeline()
+    profiler.disable()
+
+    stream = io.StringIO()
+    stats = pstats.Stats(profiler, stream=stream)
+    stats.strip_dirs()
+    stats.sort_stats("cumulative")
+    stats.print_stats(8)
+    print(stream.getvalue())
+
+
+# ==============================================================
+# Memory tracking with tracemalloc
+# ==============================================================
+
+def build_list(n: int) -> list[int]:
+    return list(range(n))
+
+
+def build_set(n: int) -> set[int]:
+    return set(range(n))
+
+
+def demo_tracemalloc() -> None:
+    n = 500_000
+
+    tracemalloc.start()
+    before = tracemalloc.take_snapshot()
+    data = build_list(n)
+    after = tracemalloc.take_snapshot()
+    tracemalloc.stop()
+
+    top = after.compare_to(before, "lineno")[0]
+    print(f"build_list({n:,}): +{top.size_diff / 1024:.1f} KB  ({top.count_diff} new objects)")
+
+    tracemalloc.start()
+    before = tracemalloc.take_snapshot()
+    _ = build_set(n)
+    after = tracemalloc.take_snapshot()
+    tracemalloc.stop()
+
+    top = after.compare_to(before, "lineno")[0]
+    print(f"build_set({n:,}):  +{top.size_diff / 1024:.1f} KB  ({top.count_diff} new objects)")
+
+    del data
+
+
 def main() -> None:
     print("=" * 50)
     print("1. time.perf_counter")
@@ -66,6 +139,18 @@ def main() -> None:
     print("2. timeit")
     print("=" * 50)
     demo_timeit()
+
+    print()
+    print("=" * 50)
+    print("3. cProfile")
+    print("=" * 50)
+    demo_cprofile()
+
+    print()
+    print("=" * 50)
+    print("4. tracemalloc")
+    print("=" * 50)
+    demo_tracemalloc()
 
 
 if __name__ == "__main__":
