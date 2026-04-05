@@ -22,6 +22,9 @@ Thumbs.db
 # VSCode
 .vscode/
 
+# Claude Code
+.claude/
+
 # Python packaging
 build/
 dist/
