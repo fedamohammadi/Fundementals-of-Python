@@ -8,6 +8,7 @@ Project Structure and Reproducibility
 """
 
 import json
+import random
 from pathlib import Path
 
 
@@ -94,6 +95,49 @@ def demo_config() -> None:
     CONFIG_PATH.unlink(missing_ok=True)
 
 
+# ==============================================================
+# Seeds for reproducible results
+# ==============================================================
+
+def set_seeds(seed: int) -> None:
+    """Set all relevant random seeds in one place."""
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except ImportError:
+        pass
+
+
+def demo_seeds() -> None:
+    # Without a seed — different every run
+    sample_a = [random.randint(0, 100) for _ in range(5)]
+    sample_b = [random.randint(0, 100) for _ in range(5)]
+    print(f"No seed — run A: {sample_a}")
+    print(f"No seed — run B: {sample_b}")
+
+    # With a fixed seed — identical every run
+    set_seeds(42)
+    fixed_a = [random.randint(0, 100) for _ in range(5)]
+    set_seeds(42)
+    fixed_b = [random.randint(0, 100) for _ in range(5)]
+    print(f"seed=42 — run A: {fixed_a}")
+    print(f"seed=42 — run B: {fixed_b}")
+    print(f"Identical: {fixed_a == fixed_b}")
+
+    # NumPy reproducibility
+    try:
+        import numpy as np
+        set_seeds(42)
+        arr_a = np.random.normal(0, 1, 3).round(4)
+        set_seeds(42)
+        arr_b = np.random.normal(0, 1, 3).round(4)
+        print(f"np seed=42 — run A: {arr_a}")
+        print(f"np seed=42 — run B: {arr_b}")
+    except ImportError:
+        print("numpy not available — skipping numpy seed demo")
+
+
 def main() -> None:
     print("=" * 50)
     print("1. pathlib — portable project paths")
@@ -105,6 +149,12 @@ def main() -> None:
     print("2. Config management with JSON")
     print("=" * 50)
     demo_config()
+
+    print()
+    print("=" * 50)
+    print("3. Seeds and reproducibility")
+    print("=" * 50)
+    demo_seeds()
 
 
 if __name__ == "__main__":
