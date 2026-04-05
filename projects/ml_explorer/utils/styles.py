@@ -16,6 +16,15 @@ MUTED    = "#94A3B8"
 
 PLOTLY_TEMPLATE = "plotly_dark"
 
+
+def hex_rgba(hex_color: str, alpha: float) -> str:
+    """Convert a 6-digit hex color + alpha float to an rgba() string.
+    Plotly 6 no longer accepts 8-digit hex (e.g. #7C3AED55) in colorscales.
+    """
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f"rgba({r},{g},{b},{alpha})"
+
 CHART_COLORS = [PURPLE, CYAN, AMBER, EMERALD, ROSE,
                 "#818CF8", "#34D399", "#FBBF24", "#FB7185", "#38BDF8"]
 

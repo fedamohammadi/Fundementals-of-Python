@@ -8,22 +8,19 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
-from sklearn.datasets import make_classification, make_regression
+from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LinearRegression, LogisticRegression
-from sklearn.metrics import (accuracy_score, confusion_matrix, mean_absolute_error,
-                             r2_score, root_mean_squared_error)
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, r2_score, root_mean_squared_error
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-from utils.styles import (AMBER, CHART_COLORS, CYAN, EMERALD, MUTED, PLOTLY_TEMPLATE,
-                          PURPLE, ROSE, TEXT, card, divider, info, inject_css, section)
+from utils.styles import (AMBER, CYAN, EMERALD, PLOTLY_TEMPLATE, PURPLE, ROSE,
+                          card, divider, hex_rgba, info, inject_css, section)
 
 st.set_page_config(page_title="Supervised Learning · ML Explorer",
                    page_icon="📊", layout="wide")
@@ -134,8 +131,9 @@ with tab2:
         fig2.add_trace(go.Contour(x=np.arange(x_min, x_max, h),
                                    y=np.arange(y_min, y_max, h),
                                    z=Z2, showscale=True,
-                                   colorscale=[[0, PURPLE+"55"], [0.5, "#ffffff22"],
-                                               [1, CYAN+"55"]],
+                                   colorscale=[[0, hex_rgba(PURPLE, 0.33)],
+                                               [0.5, "rgba(255,255,255,0.13)"],
+                                               [1, hex_rgba(CYAN, 0.33)]],
                                    contours=dict(showlines=False),
                                    name="P(class=1)"))
         colors = [PURPLE if c == 0 else CYAN for c in y2]
@@ -192,7 +190,7 @@ with tab3:
         fig3.add_trace(go.Contour(x=np.linspace(X3s[:,0].min()-0.5, X3s[:,0].max()+0.5, 300),
                                    y=np.linspace(X3s[:,1].min()-0.5, X3s[:,1].max()+0.5, 300),
                                    z=Z3.astype(float), showscale=False,
-                                   colorscale=[[0, PURPLE+"40"], [1, CYAN+"40"]],
+                                   colorscale=[[0, hex_rgba(PURPLE, 0.25)], [1, hex_rgba(CYAN, 0.25)]],
                                    contours=dict(showlines=True,
                                                  coloring="fill")))
         fig3.add_trace(go.Scatter(x=X3s[:, 0], y=X3s[:, 1], mode="markers",
@@ -322,7 +320,7 @@ with tab5:
         fig5.add_trace(go.Contour(x=np.linspace(X5s[:,0].min()-0.5, X5s[:,0].max()+0.5, 250),
                                    y=np.linspace(X5s[:,1].min()-0.5, X5s[:,1].max()+0.5, 250),
                                    z=Z5.astype(float), showscale=False,
-                                   colorscale=[[0, AMBER+"44"], [1, CYAN+"44"]],
+                                   colorscale=[[0, hex_rgba(AMBER, 0.27)], [1, hex_rgba(CYAN, 0.27)]],
                                    contours=dict(showlines=True, coloring="fill")))
         fig5.add_trace(go.Scatter(x=X5s[:,0], y=X5s[:,1], mode="markers",
                                    marker=dict(color=[AMBER if c==0 else CYAN for c in y5],

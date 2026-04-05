@@ -17,7 +17,8 @@ from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
 from utils.styles import (AMBER, CHART_COLORS, CYAN, EMERALD, MUTED, PLOTLY_TEMPLATE,
-                          PURPLE, ROSE, TEXT, card, divider, info, inject_css, section)
+                          PURPLE, ROSE, TEXT, card, divider, hex_rgba, info,
+                          inject_css, section)
 
 st.set_page_config(page_title="Unsupervised Learning · ML Explorer",
                    page_icon="🔍", layout="wide")
@@ -66,7 +67,7 @@ with tab1:
             fig_km.add_trace(go.Contour(
                 x=np.arange(xmin, xmax, h), y=np.arange(ymin, ymax, h),
                 z=Z_km.astype(float), showscale=False,
-                colorscale=[[i/(k-1 or 1), CHART_COLORS[i % len(CHART_COLORS)] + "30"]
+                colorscale=[[i/(k-1 or 1), hex_rgba(CHART_COLORS[i % len(CHART_COLORS)], 0.19)]
                             for i in range(k)],
                 contours=dict(showlines=True, coloring="fill")))
 
