@@ -9,7 +9,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import plotly.figure_factory as ff
 import plotly.graph_objects as go
 import streamlit as st
@@ -17,10 +16,10 @@ from sklearn.datasets import (load_breast_cancer, load_iris, load_wine,
                                make_classification, make_regression)
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import Lasso, LogisticRegression, Ridge
-from sklearn.metrics import (accuracy_score, classification_report,
-                              confusion_matrix, f1_score, mean_absolute_error,
-                              mean_squared_error, precision_score, r2_score,
-                              recall_score, roc_auc_score, roc_curve)
+from sklearn.metrics import (accuracy_score, confusion_matrix, f1_score,
+                              mean_absolute_error, precision_score, r2_score,
+                              recall_score, roc_auc_score, roc_curve,
+                              root_mean_squared_error)
 from sklearn.model_selection import cross_val_score, train_test_split
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
@@ -62,6 +61,8 @@ with st.sidebar:
 
     is_regression = "Regression" in dataset_name
 
+    n_pg: int = 300
+    noise_pg: float = 1.0
     if "Synthetic" in dataset_name:
         n_pg = st.slider("Samples", 100, 1000, 300, key="pg_n")
         noise_pg = st.slider("Noise", 0.1, 3.0, 1.0, 0.1, key="pg_noise")
@@ -151,8 +152,8 @@ def get_data(name, n=300, noise=1.0, seed=42):
 
 X, y, feature_names, class_names = get_data(
     dataset_name,
-    n=locals().get("n_pg", 300),
-    noise=locals().get("noise_pg", 1.0),
+    n=n_pg,
+    noise=noise_pg,
     seed=int(seed_pg),
 )
 
@@ -202,7 +203,7 @@ section(f"Results — {model_name} on {dataset_name.split('(')[0].strip()}")
 if is_regression:
     # ── Regression metrics ──────────────────────────────────────────────────
     r2   = r2_score(y_test, y_pred)
-    rmse = mean_squared_error(y_test, y_pred, squared=False)
+    rmse = root_mean_squared_error(y_test, y_pred)
     mae  = mean_absolute_error(y_test, y_pred)
 
     m1, m2, m3, m4 = st.columns(4)
@@ -246,7 +247,7 @@ else:
         cm = confusion_matrix(y_test, y_pred)
         labels_cm = class_names if class_names else [str(i) for i in sorted(set(y))]
         fig_cm = ff.create_annotated_heatmap(
-            cm, x=labels_cm, y=labels_cm,
+            cm.tolist(), x=labels_cm, y=labels_cm,
             colorscale=[[0, "#14142B"], [1, PURPLE]],
             showscale=True)
         fig_cm.update_layout(template=PLOTLY_TEMPLATE, height=380,
