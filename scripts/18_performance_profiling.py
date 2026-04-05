@@ -128,6 +128,36 @@ def demo_tracemalloc() -> None:
     del data
 
 
+# ==============================================================
+# Vectorization vs loops (practical comparison)
+# ==============================================================
+
+def demo_vectorization() -> None:
+    try:
+        import numpy as np
+    except ImportError:
+        print("numpy not available — skipping vectorization demo")
+        return
+
+    n = 1_000_000
+    data = list(range(n))
+    arr = np.arange(n, dtype=float)
+
+    start = time.perf_counter()
+    result_loop = [x * 2.0 for x in data]
+    t_loop = time.perf_counter() - start
+
+    start = time.perf_counter()
+    result_vec = arr * 2.0
+    t_vec = time.perf_counter() - start
+
+    print(f"List comprehension ({n:,} elements): {t_loop:.4f}s")
+    print(f"NumPy vectorized   ({n:,} elements): {t_vec:.4f}s")
+    print(f"Speedup: {t_loop / t_vec:.1f}x")
+
+    del result_loop, result_vec
+
+
 def main() -> None:
     print("=" * 50)
     print("1. time.perf_counter")
@@ -151,6 +181,12 @@ def main() -> None:
     print("4. tracemalloc")
     print("=" * 50)
     demo_tracemalloc()
+
+    print()
+    print("=" * 50)
+    print("5. Vectorization vs loops")
+    print("=" * 50)
+    demo_vectorization()
 
 
 if __name__ == "__main__":
