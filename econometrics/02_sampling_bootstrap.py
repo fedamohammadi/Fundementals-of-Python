@@ -57,3 +57,49 @@ def demo_sampling(seed: int = 42) -> None:
     print()
     print(f"  Duplicates in WR sample: "
           f"{n - len(set(wr))} out of {n} draws")
+
+
+# ==============================================================
+# 2. The Bootstrap
+# ==============================================================
+# Idea: treat your sample as if it were the population, then
+# resample from it (with replacement) B times.  Each resample
+# gives one estimate of your statistic.  The spread of those
+# B estimates approximates the sampling distribution — without
+# needing a formula.
+#
+# Why it works: by the LLN the empirical CDF converges to the
+# true CDF, so resampling from the empirical CDF approximates
+# resampling from the true population.
+
+def bootstrap(data: list[float], statistic, B: int = 2000, seed: int = 42):
+    """Draw B bootstrap resamples and return the statistic for each."""
+    random.seed(seed)
+    n = len(data)
+    return [
+        statistic([random.choice(data) for _ in range(n)])
+        for _ in range(B)
+    ]
+
+
+def demo_bootstrap(seed: int = 42) -> None:
+    random.seed(seed)
+
+    # Simulate a skewed income sample (log-normal, n=40)
+    mu_log, sigma_log = 10.5, 0.6
+    sample = [math.exp(random.gauss(mu_log, sigma_log)) for _ in range(40)]
+
+    true_pop_mean = math.exp(mu_log + sigma_log ** 2 / 2)
+
+    boot_means = bootstrap(sample, sample_mean, B=3000, seed=1)
+
+    boot_se   = sample_std(boot_means)
+    boot_mean = sample_mean(boot_means)
+
+    print(f"\n  Sample size : 40   (log-normal, skewed)")
+    print(f"  True E[X]   : {true_pop_mean:,.0f}")
+    print(f"  Sample mean : {sample_mean(sample):,.0f}")
+    print()
+    print(f"  Bootstrap (B=3,000 resamples):")
+    print(f"    Mean of boot. means : {boot_mean:,.0f}")
+    print(f"    Bootstrap SE        : {boot_se:,.0f}")
