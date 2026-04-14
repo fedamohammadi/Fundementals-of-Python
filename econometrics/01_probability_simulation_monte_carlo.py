@@ -539,3 +539,36 @@ def demo_mc_simulation(
     print("  Key takeaway: with a fat left tail (log-normal has less left mass),")
     print("  poverty risk actually decreases compared to the Normal scenario.")
     print("  Simulation made this comparison effortless — no tables needed.")
+
+
+# ==============================================================
+# main — run all sections in order
+# ==============================================================
+
+def main() -> None:
+    section("1) Random Variables and Probability Distributions")
+    demo_distributions(n=10, seed=42)
+
+    section("2) Expected Value and Variance — Formula vs. Simulation")
+    demo_ev_variance(seed=42)
+
+    section("3) Law of Large Numbers")
+    demo_lln(seed=42)
+
+    section("4) Central Limit Theorem")
+    demo_clt(n_samples=5_000, sample_size=30, seed=42)
+
+    section("5) Monte Carlo Integration")
+    demo_mc_integration()
+
+    section("6) Monte Carlo Simulation — Worker Income / Poverty Risk")
+    demo_mc_simulation(n=100_000, seed=42)
+
+    print("\n" + "=" * 65)
+    print("  Done. Run this script repeatedly — results are identical")
+    print("  because every function sets its own random seed.")
+    print("=" * 65)
+
+
+if __name__ == "__main__":
+    main()
