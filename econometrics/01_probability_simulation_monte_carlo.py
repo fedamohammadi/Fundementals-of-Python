@@ -414,3 +414,128 @@ def demo_mc_integration() -> None:
         )
         pi_est = 4 * hits / n
         print(f"  {n:>10,} | {pi_est:>12.6f} | {abs(pi_est - math.pi):>10.6f}")
+
+
+# ==============================================================
+# 6. Monte Carlo Simulation — Practical Economic Example
+# ==============================================================
+# Suppose a worker has uncertain annual earnings drawn from
+# N(50_000, 10_000²) and must pay a flat 20% income tax plus
+# a fixed healthcare premium of $5,000/year.
+#
+# Question: What is the probability that the worker's *after-tax
+# after-premium disposable income* falls below the poverty line
+# of $20,000?
+#
+# Analytical derivation is possible here, but Monte Carlo makes
+# the logic completely transparent and extends trivially to more
+# complex, non-linear rules.
+
+def worker_disposable_income(
+    gross: float,
+    tax_rate: float = 0.20,
+    healthcare_premium: float = 5_000.0,
+) -> float:
+    """
+    Return disposable income after tax and fixed healthcare premium.
+
+    Parameters
+    ----------
+    gross             : gross annual earnings in USD
+    tax_rate          : flat income tax rate (default 20%)
+    healthcare_premium: fixed annual healthcare cost in USD
+
+    Returns
+    -------
+    Disposable income in USD.
+    """
+    after_tax = gross * (1 - tax_rate)
+    return after_tax - healthcare_premium
+
+
+def demo_mc_simulation(
+    n: int = 100_000,
+    seed: int = 42,
+) -> None:
+    """
+    Estimate poverty-risk probabilities for a worker with uncertain
+    income using Monte Carlo simulation.
+
+    We also show how the simulation degrades gracefully when the
+    earnings distribution is changed (e.g. fat-tailed vs normal).
+
+    Parameters
+    ----------
+    n    : number of simulated workers
+    seed : random seed
+    """
+    random.seed(seed)
+
+    mu_gross    = 50_000.0   # mean annual earnings
+    sigma_gross = 10_000.0   # standard deviation of earnings
+    poverty_line = 20_000.0  # USD threshold
+
+    # ---- Scenario A: Normal earnings -------------------------
+    # Analytical answer:
+    #   Disposable = 0.8 * Gross - 5000
+    #   E[Disp]    = 0.8 * 50000 - 5000 = 35000
+    #   SD[Disp]   = 0.8 * 10000 = 8000
+    #   P(Disp < 20000) = P(Z < (20000 - 35000) / 8000)
+    #                   = P(Z < -1.875)
+    #                   ≈ 3.04%  (from standard normal table)
+    #
+    # We can verify this without any table using the formula above.
+
+    incomes_normal = [random.gauss(mu_gross, sigma_gross) for _ in range(n)]
+    disposable_normal = [worker_disposable_income(g) for g in incomes_normal]
+    prob_poor_normal  = sum(1 for d in disposable_normal if d < poverty_line) / n
+
+    # Compute moments of simulated disposable income
+    d_mean = sample_mean(disposable_normal)
+    d_std  = math.sqrt(sample_variance(disposable_normal, ddof=1))
+
+    print(f"\n  Scenario A — Normal earnings N({mu_gross:,.0f}, {sigma_gross:,.0f}²)")
+    print(f"  n = {n:,} simulated workers")
+    print()
+    print(f"  Simulated E[disposable income]  = ${d_mean:>10,.2f}")
+    print(f"  Simulated SD[disposable income] = ${d_std:>10,.2f}")
+    print()
+    print(f"  P(disposable < poverty line):")
+    print(f"    Simulated  : {prob_poor_normal * 100:.3f}%")
+    print(f"    Analytical : ~3.04%  (from standard normal table)")
+
+    # ---- Scenario B: Earnings drawn from a skewed distribution --
+    # Replace Normal with a log-normal: if log(G) ~ N(mu_log, sigma_log),
+    # then G has a right skew (mirrors real wage distributions).
+    # We choose parameters so E[G] ≈ 50,000.
+    #
+    # For log-normal: E[G] = exp(mu_log + sigma_log²/2)
+    # We want E[G] = 50000, Std[G] ≈ 10000.
+    # Solve: mu_log + sigma_log²/2 = ln(50000)
+    #        sigma_log² = ln(1 + (10000/50000)²) ≈ 0.0392
+    sigma_log = math.sqrt(math.log(1 + (sigma_gross / mu_gross) ** 2))
+    mu_log    = math.log(mu_gross) - sigma_log ** 2 / 2
+
+    random.seed(seed)
+    incomes_lognormal = [
+        math.exp(random.gauss(mu_log, sigma_log)) for _ in range(n)
+    ]
+    disposable_lognormal = [worker_disposable_income(g) for g in incomes_lognormal]
+    prob_poor_lognormal  = sum(
+        1 for d in disposable_lognormal if d < poverty_line
+    ) / n
+
+    d_mean_ln = sample_mean(disposable_lognormal)
+    d_std_ln  = math.sqrt(sample_variance(disposable_lognormal, ddof=1))
+
+    print()
+    print(f"  Scenario B — Log-normal earnings (same E[G] and SD[G])")
+    print(f"  This distribution has a right tail — more realistic.")
+    print()
+    print(f"  Simulated E[disposable income]  = ${d_mean_ln:>10,.2f}")
+    print(f"  Simulated SD[disposable income] = ${d_std_ln:>10,.2f}")
+    print(f"  P(disposable < poverty line)    = {prob_poor_lognormal * 100:.3f}%")
+    print()
+    print("  Key takeaway: with a fat left tail (log-normal has less left mass),")
+    print("  poverty risk actually decreases compared to the Normal scenario.")
+    print("  Simulation made this comparison effortless — no tables needed.")
