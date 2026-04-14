@@ -185,3 +185,134 @@ def demo_ev_variance(seed: int = 42) -> None:
     print()
     print("  Observation: both errors shrink toward zero as n grows.")
     print("  This is the Law of Large Numbers in action (see Section 3).")
+
+
+# ==============================================================
+# 3. Law of Large Numbers (LLN)
+# ==============================================================
+# The LLN states that the sample average of iid random variables
+# converges to the true expected value as the sample size grows.
+#
+# Formal statement (Weak LLN):
+#   If X_1, X_2, ..., X_n are iid with mean mu, then
+#   (X_1 + ... + X_n) / n  →  mu  as  n → ∞
+#
+# Why it matters in econometrics:
+#   - Justifies using sample moments to estimate population moments.
+#   - Underpins OLS consistency: with enough data, OLS converges
+#     to the true population coefficients.
+
+def demo_lln(seed: int = 42) -> None:
+    """
+    Visualize the LLN by tracking the running mean of coin flips.
+
+    A fair coin has E[X] = 0.5 (1 = heads, 0 = tails).
+    We show how the running average approaches 0.5 step by step.
+    """
+    random.seed(seed)
+
+    n_total = 1000
+    flips   = [1 if random.random() < 0.5 else 0 for _ in range(n_total)]
+
+    # Track the running (cumulative) mean after each flip
+    running_sum  = 0
+    checkpoints  = [1, 5, 10, 50, 100, 250, 500, 1000]
+    print(f"\n  True expected value (fair coin) = 0.5\n")
+    print(f"  {'n':>6} | {'running mean':>14} | {'error from 0.5':>16}")
+    print(f"  {'-'*6}-+-{'-'*14}-+-{'-'*16}")
+
+    for i, flip in enumerate(flips, start=1):
+        running_sum += flip
+        running_mean = running_sum / i
+        if i in checkpoints:
+            error = abs(running_mean - 0.5)
+            print(f"  {i:>6,} | {running_mean:>14.5f} | {error:>16.5f}")
+
+    print()
+    print("  The running mean zigzags early but locks in near 0.5 by n=1,000.")
+    print("  With n=1,000,000 it would be indistinguishable from 0.5.")
+
+
+# ==============================================================
+# 4. Central Limit Theorem (CLT)
+# ==============================================================
+# The CLT is arguably the most important theorem in statistics.
+# It says that the *sampling distribution of the mean* is
+# approximately normal, regardless of the original distribution,
+# provided n is large enough.
+#
+# Formal statement:
+#   sqrt(n) * (X_bar - mu) / sigma  →  N(0, 1)  as n → ∞
+#
+# Why it matters in econometrics:
+#   - Justifies normal-based inference (t-tests, confidence intervals)
+#     even when the underlying error distribution is unknown.
+#   - Explains why OLS residuals look approximately normal in large
+#     samples even if the true error is skewed or fat-tailed.
+#   - Motivates the use of asymptotic standard errors.
+
+def demo_clt(
+    n_samples: int = 5_000,
+    sample_size: int = 30,
+    seed: int = 42,
+) -> None:
+    """
+    Demonstrate the CLT using a skewed Exponential distribution.
+
+    We draw many samples of size `sample_size` from Exp(lambda=0.5),
+    compute the sample mean for each, and show that those means
+    are approximately normally distributed — even though the raw
+    data is heavily right-skewed.
+
+    Parameters
+    ----------
+    n_samples   : number of samples to draw (i.e. repetitions)
+    sample_size : size of each sample (n in the CLT formula)
+    seed        : random seed
+    """
+    random.seed(seed)
+
+    lam = 0.5              # rate parameter
+    true_mean = 1 / lam    # E[Exp(lambda)] = 1/lambda = 2.0
+    true_std  = 1 / lam    # SD[Exp(lambda)] = 1/lambda = 2.0
+
+    # Collect the sample mean from each repetition
+    sample_means = []
+    for _ in range(n_samples):
+        sample = [random.expovariate(lam) for _ in range(sample_size)]
+        sample_means.append(sample_mean(sample))
+
+    # The CLT predicts the sampling distribution of X_bar is:
+    #   N(mu, sigma^2 / n)
+    #   → N(2.0, 4.0 / 30)  with SE = sigma / sqrt(n)
+    predicted_se = true_std / math.sqrt(sample_size)
+
+    # Compare predicted vs simulated statistics
+    sim_mean = sample_mean(sample_means)
+    sim_std  = math.sqrt(sample_variance(sample_means, ddof=1))
+
+    print(f"\n  Source distribution : Exponential(lambda={lam})")
+    print(f"  True mean (mu)      : {true_mean:.4f}")
+    print(f"  Sample size (n)     : {sample_size}")
+    print(f"  Number of samples   : {n_samples:,}")
+    print()
+    print(f"  CLT prediction for sampling distribution of X_bar:")
+    print(f"    Center (mu)       = {true_mean:.4f}")
+    print(f"    Std error (SE)    = sigma/sqrt(n) = {predicted_se:.4f}")
+    print()
+    print(f"  Simulated sampling distribution of X_bar:")
+    print(f"    Simulated mean    = {sim_mean:.4f}   (should ≈ {true_mean:.4f})")
+    print(f"    Simulated std     = {sim_std:.4f}   (should ≈ {predicted_se:.4f})")
+
+    # Quick normality check: what fraction of sample means fall within
+    # ±1 SE, ±2 SE, ±3 SE of the predicted center?
+    # For N(0,1): ~68%, ~95%, ~99.7%
+    print()
+    print("  Normality check — share of sample means within k×SE of mu:")
+    for k in [1, 2, 3]:
+        lo = true_mean - k * predicted_se
+        hi = true_mean + k * predicted_se
+        inside = sum(1 for m in sample_means if lo <= m <= hi)
+        pct = inside / n_samples * 100
+        print(f"    ±{k} SE : {pct:.1f}%  (normal theory: "
+              f"{[68.3, 95.4, 99.7][k-1]:.1f}%)")
