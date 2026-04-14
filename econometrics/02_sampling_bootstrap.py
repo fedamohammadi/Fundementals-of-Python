@@ -161,3 +161,85 @@ def demo_bootstrap_ci(seed: int = 42) -> None:
           f"{'YES' if ci_boot_lo <= true_mean <= ci_boot_hi else 'NO'}")
     print(f"  True mean inside normal CI    : "
           f"{'YES' if ci_norm_lo <= true_mean <= ci_norm_hi else 'NO'}")
+
+
+# ==============================================================
+# 4. Coverage Study — Does the CI Actually Hit 95%?
+# ==============================================================
+# Run many simulations, build a CI each time, and count how often
+# it contains the true parameter.  This is the "coverage rate."
+# A well-calibrated 95% CI should cover ~95% of the time.
+
+def coverage_study(
+    true_mean: float,
+    gen_sample,
+    n_sim: int = 500,
+    B: int = 1000,
+    seed: int = 42,
+) -> None:
+    """
+    Estimate coverage of the percentile bootstrap and normal CIs.
+
+    Parameters
+    ----------
+    true_mean  : the parameter we are estimating
+    gen_sample : callable() -> list[float], generates one sample
+    n_sim      : number of simulation repetitions
+    B          : bootstrap resamples per repetition
+    """
+    random.seed(seed)
+
+    boot_hits  = 0
+    norm_hits  = 0
+
+    for sim in range(n_sim):
+        samp      = gen_sample()
+        x_bar     = sample_mean(samp)
+        se        = sample_std(samp) / math.sqrt(len(samp))
+
+        # Percentile bootstrap CI
+        boot_dist  = bootstrap(samp, sample_mean, B=B, seed=sim)
+        lo_b, hi_b = percentile_ci(boot_dist, alpha=0.05)
+        boot_hits += int(lo_b <= true_mean <= hi_b)
+
+        # Normal-theory CI
+        lo_n = x_bar - 1.96 * se
+        hi_n = x_bar + 1.96 * se
+        norm_hits += int(lo_n <= true_mean <= hi_n)
+
+    print(f"\n  Repetitions : {n_sim}   Bootstrap resamples each: {B}")
+    print(f"  Target coverage: 95%")
+    print()
+    print(f"  Bootstrap percentile CI coverage : "
+          f"{boot_hits / n_sim * 100:.1f}%")
+    print(f"  Normal-theory CI coverage        : "
+          f"{norm_hits / n_sim * 100:.1f}%")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1) Random Sampling")
+    demo_sampling()
+
+    section("2) The Bootstrap")
+    demo_bootstrap()
+
+    section("3) Bootstrap Confidence Intervals")
+    demo_bootstrap_ci()
+
+    section("4) Coverage Study")
+    # Log-normal sample — skewed, n=30
+    mu_log, sigma_log = 10.5, 0.6
+    true_mean = math.exp(mu_log + sigma_log ** 2 / 2)
+
+    def gen():
+        return [math.exp(random.gauss(mu_log, sigma_log)) for _ in range(30)]
+
+    coverage_study(true_mean, gen, n_sim=400, B=800, seed=42)
+
+
+if __name__ == "__main__":
+    main()
