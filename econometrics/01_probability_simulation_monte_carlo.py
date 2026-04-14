@@ -316,3 +316,101 @@ def demo_clt(
         pct = inside / n_samples * 100
         print(f"    ±{k} SE : {pct:.1f}%  (normal theory: "
               f"{[68.3, 95.4, 99.7][k-1]:.1f}%)")
+
+
+# ==============================================================
+# 5. Monte Carlo Integration
+# ==============================================================
+# Monte Carlo integration estimates a definite integral by
+# drawing random points and checking whether they satisfy a
+# condition — or by averaging function values at random inputs.
+#
+# Classic formula (hit-or-miss variant):
+#   ∫_a^b f(x) dx  ≈  (b - a) * (1/n) * Σ f(x_i)
+#   where x_i ~ Uniform(a, b)
+#
+# Why useful in econometrics:
+#   - Evaluate high-dimensional integrals (e.g. likelihood functions)
+#     that have no closed form.
+#   - Compute probabilities under non-standard distributions.
+#   - Estimate option prices, expected welfare, etc.
+
+def mc_integrate(
+    func,
+    a: float,
+    b: float,
+    n: int,
+    seed: int = 42,
+) -> float:
+    """
+    Estimate ∫_a^b func(x) dx using n random draws from U(a, b).
+
+    Parameters
+    ----------
+    func : callable, the integrand
+    a, b : limits of integration
+    n    : number of Monte Carlo samples
+    seed : random seed
+
+    Returns
+    -------
+    Estimated value of the integral.
+    """
+    random.seed(seed)
+    total = sum(func(random.uniform(a, b)) for _ in range(n))
+    return (b - a) * total / n
+
+
+def demo_mc_integration() -> None:
+    """
+    Estimate three integrals with known analytical answers and
+    show how the MC estimate improves as n grows.
+
+    Example 1: ∫_0^1 x^2 dx = 1/3 ≈ 0.3333
+    Example 2: ∫_0^π sin(x) dx = 2
+    Example 3: Estimate π using the unit-circle trick
+               (fraction of points inside unit circle × 4)
+    """
+    # ----------------------------------------------------------
+    # Example 1: ∫_0^1 x^2 dx  (true answer = 1/3)
+    # ----------------------------------------------------------
+    true_1 = 1 / 3
+    print(f"\n  Integral 1: ∫_0^1 x² dx  (true = {true_1:.6f})")
+    print(f"  {'n':>10} | {'estimate':>12} | {'error':>10}")
+    print(f"  {'-'*10}-+-{'-'*12}-+-{'-'*10}")
+    for n in [100, 1_000, 10_000, 100_000, 1_000_000]:
+        est = mc_integrate(lambda x: x ** 2, 0, 1, n, seed=0)
+        print(f"  {n:>10,} | {est:>12.6f} | {abs(est - true_1):>10.6f}")
+
+    # ----------------------------------------------------------
+    # Example 2: ∫_0^π sin(x) dx  (true answer = 2)
+    # ----------------------------------------------------------
+    true_2 = 2.0
+    print(f"\n  Integral 2: ∫_0^π sin(x) dx  (true = {true_2:.6f})")
+    print(f"  {'n':>10} | {'estimate':>12} | {'error':>10}")
+    print(f"  {'-'*10}-+-{'-'*12}-+-{'-'*10}")
+    for n in [100, 1_000, 10_000, 100_000, 1_000_000]:
+        est = mc_integrate(math.sin, 0, math.pi, n, seed=1)
+        print(f"  {n:>10,} | {est:>12.6f} | {abs(est - true_2):>10.6f}")
+
+    # ----------------------------------------------------------
+    # Example 3: Estimating π via the unit-circle trick
+    # Throw n darts at a 2×2 square centered at the origin.
+    # The fraction that land inside the unit circle × 4 ≈ π.
+    # Area of circle = π r² = π  (r=1)
+    # Area of square = (2r)² = 4
+    # → π/4 = Prob(inside circle)  → π ≈ 4 × (hits / n)
+    # ----------------------------------------------------------
+    print(f"\n  Integral 3: Estimating π via random darts")
+    print(f"  True π = {math.pi:.8f}")
+    print(f"  {'n':>10} | {'π estimate':>12} | {'error':>10}")
+    print(f"  {'-'*10}-+-{'-'*12}-+-{'-'*10}")
+    random.seed(7)
+    for n in [100, 1_000, 10_000, 100_000, 1_000_000]:
+        hits = sum(
+            1
+            for _ in range(n)
+            if random.uniform(-1, 1) ** 2 + random.uniform(-1, 1) ** 2 <= 1.0
+        )
+        pi_est = 4 * hits / n
+        print(f"  {n:>10,} | {pi_est:>12.6f} | {abs(pi_est - math.pi):>10.6f}")
