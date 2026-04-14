@@ -8,23 +8,10 @@ Concepts covered:
 - Central Limit Theorem
 - Monte Carlo integration
 - Monte Carlo simulation for a practical economic problem
-
-Why this matters in econometrics:
-  Econometrics is built on probability theory. Before running a regression
-  you need to understand what a random variable is, what a distribution
-  looks like, and how large samples behave. Monte Carlo methods let you
-  *verify* analytical results by brute-force simulation — an indispensable
-  sanity check when the math gets complicated.
 """
 
 import random
 import math
-import sys
-
-# Ensure unicode characters (Greek letters, math symbols) render
-# correctly on Windows terminals that default to cp1252.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
 
 
 # ==============================================================
@@ -134,9 +121,6 @@ def demo_distributions(n: int = 10, seed: int = 42) -> None:
 # The expected value E[X] is the long-run average outcome.
 # Variance Var(X) = E[(X - E[X])^2] measures spread around the mean.
 #
-# Key insight: simulation *converges* to the true value as n → ∞.
-# Showing this convergence demystifies probability theory — the
-# formulas are just shortcuts for what the simulation does slowly.
 
 def sample_mean(data: list[float]) -> float:
     """Return the arithmetic mean of a list."""
@@ -203,10 +187,6 @@ def demo_ev_variance(seed: int = 42) -> None:
 #   If X_1, X_2, ..., X_n are iid with mean mu, then
 #   (X_1 + ... + X_n) / n  →  mu  as  n → ∞
 #
-# Why it matters in econometrics:
-#   - Justifies using sample moments to estimate population moments.
-#   - Underpins OLS consistency: with enough data, OLS converges
-#     to the true population coefficients.
 
 def demo_lln(seed: int = 42) -> None:
     """
@@ -250,12 +230,6 @@ def demo_lln(seed: int = 42) -> None:
 # Formal statement:
 #   sqrt(n) * (X_bar - mu) / sigma  →  N(0, 1)  as n → ∞
 #
-# Why it matters in econometrics:
-#   - Justifies normal-based inference (t-tests, confidence intervals)
-#     even when the underlying error distribution is unknown.
-#   - Explains why OLS residuals look approximately normal in large
-#     samples even if the true error is skewed or fat-tailed.
-#   - Motivates the use of asymptotic standard errors.
 
 def demo_clt(
     n_samples: int = 5_000,
@@ -335,7 +309,7 @@ def demo_clt(
 #   ∫_a^b f(x) dx  ≈  (b - a) * (1/n) * Σ f(x_i)
 #   where x_i ~ Uniform(a, b)
 #
-# Why useful in econometrics:
+# This is useful in econometrics:
 #   - Evaluate high-dimensional integrals (e.g. likelihood functions)
 #     that have no closed form.
 #   - Compute probabilities under non-standard distributions.
@@ -429,14 +403,6 @@ def demo_mc_integration() -> None:
 # N(50_000, 10_000²) and must pay a flat 20% income tax plus
 # a fixed healthcare premium of $5,000/year.
 #
-# Question: What is the probability that the worker's *after-tax
-# after-premium disposable income* falls below the poverty line
-# of $20,000?
-#
-# Analytical derivation is possible here, but Monte Carlo makes
-# the logic completely transparent and extends trivially to more
-# complex, non-linear rules.
-
 def worker_disposable_income(
     gross: float,
     tax_rate: float = 0.20,
@@ -542,39 +508,4 @@ def demo_mc_simulation(
     print(f"  Simulated SD[disposable income] = ${d_std_ln:>10,.2f}")
     print(f"  P(disposable < poverty line)    = {prob_poor_lognormal * 100:.3f}%")
     print()
-    print("  Key takeaway: with a fat left tail (log-normal has less left mass),")
-    print("  poverty risk actually decreases compared to the Normal scenario.")
-    print("  Simulation made this comparison effortless — no tables needed.")
 
-
-# ==============================================================
-# main — run all sections in order
-# ==============================================================
-
-def main() -> None:
-    section("1) Random Variables and Probability Distributions")
-    demo_distributions(n=10, seed=42)
-
-    section("2) Expected Value and Variance — Formula vs. Simulation")
-    demo_ev_variance(seed=42)
-
-    section("3) Law of Large Numbers")
-    demo_lln(seed=42)
-
-    section("4) Central Limit Theorem")
-    demo_clt(n_samples=5_000, sample_size=30, seed=42)
-
-    section("5) Monte Carlo Integration")
-    demo_mc_integration()
-
-    section("6) Monte Carlo Simulation — Worker Income / Poverty Risk")
-    demo_mc_simulation(n=100_000, seed=42)
-
-    print("\n" + "=" * 65)
-    print("  Done. Run this script repeatedly — results are identical")
-    print("  because every function sets its own random seed.")
-    print("=" * 65)
-
-
-if __name__ == "__main__":
-    main()
