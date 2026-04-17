@@ -1,7 +1,5 @@
 """
-Probability, Simulation, and Monte Carlo Methods
-=================================================
-Concepts covered:
+Probability, Simulation, and Monte Carlo Methods:
 - Random variables and common probability distributions
 - Expected value and variance (formula vs. simulation)
 - Law of Large Numbers
@@ -120,7 +118,6 @@ def demo_distributions(n: int = 10, seed: int = 42) -> None:
 # ==============================================================
 # The expected value E[X] is the long-run average outcome.
 # Variance Var(X) = E[(X - E[X])^2] measures spread around the mean.
-#
 
 def sample_mean(data: list[float]) -> float:
     """Return the arithmetic mean of a list."""

@@ -1,7 +1,5 @@
 """
-Sampling and the Bootstrap
-==========================
-Concepts covered:
+Sampling and the Bootstrap:
 - Random sampling (with and without replacement)
 - The bootstrap: resampling to estimate uncertainty
 - Bootstrap standard errors and confidence intervals
