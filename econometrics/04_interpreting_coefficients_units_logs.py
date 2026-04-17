@@ -432,3 +432,86 @@ def demo_standardized() -> None:
     print("  Note: raw coefficients (2.74 vs 0.18) make educ look 15x more")
     print(f"  important, but that is partly because 1 yr of educ and 1 yr of exper")
     print(f"  are not equally 'large' moves ({educ_sd:.1f} vs {exper_sd:.1f} SD units).")
+
+
+# ==============================================================
+# 7. Side-by-Side Model Comparison
+# ==============================================================
+# A practical checklist for choosing functional form:
+#
+#   1. Look at the distribution of y: if right-skewed, ln(y) fits better.
+#   2. Think about the economic question:
+#        - Do you want effects in levels or percentages?  -> log y or not
+#        - Do you expect diminishing returns to x?        -> log x or not
+#   3. Compare R^2 across models (only valid when y is the same in all).
+#      R^2 from ln(y) models cannot be directly compared with R^2 from
+#      y models — they explain variance in different things.
+#   4. Plot residuals (file 05) to check which model is better specified.
+
+def demo_model_comparison() -> None:
+    """
+    Fit all four models and produce a compact comparison table.
+    Highlights that R^2 comparison is only valid across models
+    with the same dependent variable.
+    """
+    df = make_data()
+
+    models = {
+        "Level-Level  (wage ~ educ + exper)":        smf.ols("wage     ~ educ     + exper", data=df).fit(),
+        "Log-Level    (ln_wage ~ educ + exper)":     smf.ols("log_wage ~ educ     + exper", data=df).fit(),
+        "Level-Log    (wage ~ ln_educ + exper)":     smf.ols("wage     ~ log_educ + exper", data=df).fit(),
+        "Log-Log      (ln_wage ~ ln_educ + exper)":  smf.ols("log_wage ~ log_educ + exper", data=df).fit(),
+    }
+
+    print(f"\n  {'Model':>45} | {'R^2':>7} | {'AIC':>10} | dep. var")
+    print(f"  {'-'*45}-+-{'-'*7}-+-{'-'*10}-+-{'-'*10}")
+    for name, res in models.items():
+        dep = "wage" if "Level-L" in name or "Level-Lo" in name else "ln(wage)"
+        print(f"  {name:>45} | {res.rsquared:>7.4f} | {res.aic:>10.1f} | {dep}")
+
+    print()
+    print("  R^2 comparison is valid only WITHIN each dep. variable group:")
+    print("    wage    models: Level-Level vs Level-Log")
+    print("    ln(wage) models: Log-Level vs Log-Log")
+    print()
+    print("  AIC (Akaike Information Criterion) is comparable across models")
+    print("  with the SAME dep. variable; lower AIC = better fit per parameter.")
+    print()
+    print("  The true DGP is log-level, so Log-Level should have the best AIC")
+    print("  among the ln(wage) models. Log-Log is a close second.")
+    print()
+    print("  Practical rule of thumb for logs:")
+    print("    - If the variable spans more than one order of magnitude, use log.")
+    print("    - Wages, prices, GDP, population -> almost always log.")
+    print("    - Binary variables, years of school -> usually levels.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Why Functional Form Matters")
+    demo_why_form_matters()
+
+    section("2. Level-Level Model")
+    demo_level_level()
+
+    section("3. Log-Level Model  (semi-elasticity)")
+    demo_log_level()
+
+    section("4. Level-Log Model  (diminishing returns)")
+    demo_level_log()
+
+    section("5. Log-Log Model  (elasticity)")
+    demo_log_log()
+
+    section("6. Standardized Coefficients")
+    demo_standardized()
+
+    section("7. Model Comparison and Choosing Functional Form")
+    demo_model_comparison()
+
+
+if __name__ == "__main__":
+    main()
