@@ -295,3 +295,140 @@ def demo_level_log() -> None:
     print(f"    Difference: ${w_more - w_base:.2f}/hr  =  b1 * ln(16/12) = {b1:.3f} * {math.log(16/12):.4f}")
     print()
     print(f"  R^2 = {result.rsquared:.4f}")
+
+
+# ==============================================================
+# 5. Log-Log Model (Elasticity)
+# ==============================================================
+# The classic elasticity specification:
+#   ln(y) = b0 + b1*ln(x) + controls + eps
+#
+# Differentiating:
+#   d(ln y)/d(ln x) = b1
+#   (dy/y) / (dx/x) = b1
+#
+# So b1 is the elasticity of y with respect to x:
+#   a 1% increase in x leads to a b1% increase in y.
+#
+# This is scale-free — it does not matter whether wages are in
+# dollars or euros.  Elasticities are directly comparable across
+# different studies and countries.
+#
+# Common applications:
+#   - Price elasticity of demand: ln(Q) ~ ln(P)
+#   - Income elasticity of demand: ln(Q) ~ ln(income)
+#   - Wage elasticity: ln(wage) ~ ln(educ)
+
+def demo_log_log() -> None:
+    """
+    Fit ln(wage) ~ ln(educ) + exper and interpret the log-log
+    coefficient as an elasticity.  Also show the symmetry property:
+    the educ elasticity is the same whether educ is high or low.
+    """
+    df = make_data()
+
+    # Note: exper enters in levels here because a "% change in exper"
+    # is hard to interpret (going from 1 to 2 years = 100% increase).
+    result = smf.ols("log_wage ~ log_educ + exper", data=df).fit()
+
+    b0 = result.params["Intercept"]
+    b1 = result.params["log_educ"]    # elasticity of wage w.r.t. educ
+    b2 = result.params["exper"]
+
+    print(f"\n  Fitted model:  ln(wage) = {b0:.3f} + {b1:.4f}*ln(educ) + {b2:.4f}*exper")
+    print()
+    print(f"  b1 = {b1:.4f}  ->  wage elasticity with respect to educ")
+    print(f"    +1% in educ  ->  +{b1:.2f}% in wage")
+    print(f"    +10% in educ ->  +{b1 * math.log(1.10) / math.log(1.10) * 10:.2f}% in wage  (exact: {(1.10**b1 - 1)*100:.2f}%)")
+    print(f"    +100% in educ (doubling) -> +{(2**b1 - 1)*100:.1f}% in wage")
+    print()
+
+    # Symmetry: the elasticity is the same at all educ levels
+    # (unlike the level-log model where the marginal effect changes)
+    print("  Elasticity is constant (does not depend on the value of educ):")
+    for educ_val in [8, 12, 16, 20]:
+        # d(wage)/d(educ) in level terms = b1 * (wage/educ)
+        # But the % change interpretation is always b1% per 1% change
+        print(f"    At educ={educ_val}: a 1% increase in educ -> {b1:.2f}% increase in wage")
+    print()
+
+    # Compare with the true elasticity implied by the DGP
+    # True DGP: ln(wage) = 1.6 + 0.10*educ + 0.008*exper
+    # For the log-log model to match, the elasticity at the mean educ
+    # should approximate: d(ln wage)/d(ln educ) = 0.10 * mean_educ
+    true_elast_at_mean = TRUE_LOG_EDUC * df["educ"].mean()
+    print(f"  True DGP is log-level, not log-log.")
+    print(f"  Local elasticity implied by DGP at mean educ ({df['educ'].mean():.1f} yrs):")
+    print(f"    b1_dgp * E[educ] = {TRUE_LOG_EDUC} * {df['educ'].mean():.1f} = {true_elast_at_mean:.3f}")
+    print(f"  OLS log-log estimate: {b1:.4f}  (close, because log-log approximates log-level locally)")
+    print()
+    print(f"  R^2 = {result.rsquared:.4f}")
+
+
+# ==============================================================
+# 6. Standardized Coefficients
+# ==============================================================
+# Problem: when regressors are on different scales (years of school
+# vs. years of experience), the raw coefficients are not comparable.
+# b1=2.74 ($/yr of school) vs b2=0.18 ($/yr of experience) does NOT
+# mean schooling matters 15x more — the two are in different units.
+#
+# Solution: standardize each variable to mean=0, std=1 before regressing.
+#   z_x = (x - mean(x)) / std(x)
+#
+# The standardized coefficient ("beta weight") answers:
+#   "A 1-standard-deviation increase in x changes y by how many
+#    standard deviations (or units, if y is not standardized)?"
+#
+# This makes educ and exper directly comparable.
+
+def standardize(series: pd.Series) -> pd.Series:
+    """Return the z-score of a Series: (x - mean) / std."""
+    return (series - series.mean()) / series.std()
+
+
+def demo_standardized() -> None:
+    """
+    Fit the level-level model twice — once raw, once with standardized
+    regressors — and compare the coefficient magnitudes directly.
+    """
+    df = make_data()
+
+    # Raw coefficients (not comparable across variables)
+    raw = smf.ols("wage ~ educ + exper", data=df).fit()
+
+    # Standardize only the regressors (leave wage in dollar units so
+    # coefficients = $ change in wage per 1 SD change in regressor)
+    df["educ_z"]  = standardize(df["educ"])
+    df["exper_z"] = standardize(df["exper"])
+    std = smf.ols("wage ~ educ_z + exper_z", data=df).fit()
+
+    educ_sd  = df["educ"].std()
+    exper_sd = df["exper"].std()
+
+    print(f"\n  Variable standard deviations:")
+    print(f"    SD(educ)  = {educ_sd:.2f} years")
+    print(f"    SD(exper) = {exper_sd:.2f} years")
+    print()
+    print(f"  {'':>10} | {'Raw coeff':>12} | {'Std coeff':>12} | {'Std coeff interpretation'}")
+    print(f"  {'-'*10}-+-{'-'*12}-+-{'-'*12}-+-{'-'*40}")
+
+    for var, var_z, label in [("educ", "educ_z", "educ"), ("exper", "exper_z", "exper")]:
+        b_raw = raw.params[var]
+        b_std = std.params[var_z]
+        sd    = df[var].std()
+        print(f"  {label:>10} | {b_raw:>12.4f} | {b_std:>12.4f} | "
+              f"+1 SD in {label} ({sd:.1f} yrs) -> +${b_std:.2f}/hr wage")
+
+    print()
+    b_educ_std  = std.params["educ_z"]
+    b_exper_std = std.params["exper_z"]
+    print("  Comparison: which matters more for wages?")
+    print(f"    educ:  +1 SD  -> +${b_educ_std:.2f}/hr")
+    print(f"    exper: +1 SD  -> +${b_exper_std:.2f}/hr")
+    ratio = abs(b_educ_std / b_exper_std)
+    print(f"    On a per-SD basis, educ has {ratio:.1f}x the wage effect of exper.")
+    print()
+    print("  Note: raw coefficients (2.74 vs 0.18) make educ look 15x more")
+    print(f"  important, but that is partly because 1 yr of educ and 1 yr of exper")
+    print(f"  are not equally 'large' moves ({educ_sd:.1f} vs {exper_sd:.1f} SD units).")
