@@ -7,18 +7,11 @@ Linear Regression and OLS with statsmodels:
 - Fitted values, residuals, and the R² decomposition
 - The difference between population parameters and OLS estimates
 
-New dependencies (not needed in files 01-02):
-    pip install numpy pandas statsmodels
 """
 
-import sys
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
-
-# Windows terminals default to cp1252; force UTF-8 so Greek letters render.
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8")
 
 
 def section(title: str) -> None:
@@ -73,8 +66,8 @@ def make_wage_data(n: int = 200, seed: int = 42) -> pd.DataFrame:
 def demo_dgp() -> None:
     df = make_wage_data()
 
-    print(f"\n  DGP: wage = {TRUE_INTERCEPT} + {TRUE_EDUC}·educ + {TRUE_EXPER}·exper + ε")
-    print(f"       ε ~ N(0, {ERROR_STD}²),   n = {len(df)}")
+    print(f"\n  DGP: wage = {TRUE_INTERCEPT} + {TRUE_EDUC}*educ + {TRUE_EXPER}*exper + eps")
+    print(f"       eps ~ N(0, {ERROR_STD}^2),   n = {len(df)}")
     print()
     print(f"  {'Variable':>10} | {'Mean':>10} | {'Std':>10} | {'Min':>8} | {'Max':>8}")
     print(f"  {'-'*10}-+-{'-'*10}-+-{'-'*10}-+-{'-'*8}-+-{'-'*8}")
@@ -139,15 +132,15 @@ def demo_ols_simple() -> None:
 
     predicted_alpha = TRUE_INTERCEPT + TRUE_EXPER * df["exper"].mean()
 
-    print(f"\n  Model: wage = α + β·educ + ε   (exper omitted)")
+    print(f"\n  Model: wage = a + b*educ + eps   (exper omitted)")
     print()
     print(f"  {'Parameter':>16} | {'True value':>14} | {'OLS estimate':>14}")
     print(f"  {'-'*16}-+-{'-'*14}-+-{'-'*14}")
-    print(f"  {'α (intercept)':>16} | {predicted_alpha:>14.4f} | {alpha_hat:>14.4f}")
-    print(f"  {'β₁ (educ)':>16} | {TRUE_EDUC:>14.4f} | {beta_hat:>14.4f}")
+    print(f"  {'a (intercept)':>16} | {predicted_alpha:>14.4f} | {alpha_hat:>14.4f}")
+    print(f"  {'b1 (educ)':>16} | {TRUE_EDUC:>14.4f} | {beta_hat:>14.4f}")
     print()
-    print(f"  Expected α̂ ≈ β₀ + β₂·E[exper] = {TRUE_INTERCEPT} + {TRUE_EXPER}×{df['exper'].mean():.1f} = {predicted_alpha:.1f}")
-    print("  β̂₁ ≈ 1.5 ✓  (unbiased because educ ⊥ exper in our DGP)")
+    print(f"  Expected a_hat ~= b0 + b2*E[exper] = {TRUE_INTERCEPT} + {TRUE_EXPER}*{df['exper'].mean():.1f} = {predicted_alpha:.1f}")
+    print("  b1_hat ~= 1.5  (unbiased because educ and exper are independent in our DGP)")
 
 
 # ==============================================================
@@ -201,11 +194,11 @@ def demo_ols_matrix() -> None:
 
     beta_hat = ols_matrix(X, y)
 
-    print(f"\n  Model: wage = β₀ + β₁·educ + β₂·exper + ε")
+    print(f"\n  Model: wage = b0 + b1*educ + b2*exper + eps")
     print()
     print(f"  {'Parameter':>16} | {'True value':>12} | {'OLS estimate':>14}")
     print(f"  {'-'*16}-+-{'-'*12}-+-{'-'*14}")
-    labels    = ["β₀ (intercept)", "β₁ (educ)", "β₂ (exper)"]
+    labels    = ["b0 (intercept)", "b1 (educ)", "b2 (exper)"]
     true_vals = [TRUE_INTERCEPT, TRUE_EDUC, TRUE_EXPER]
     for label, true, est in zip(labels, true_vals, beta_hat):
         print(f"  {label:>16} | {true:>12.4f} | {est:>14.4f}")
@@ -244,9 +237,9 @@ def demo_statsmodels() -> None:
 
     # Quick programmatic access for use in downstream calculations
     print("\n  Programmatic access to key attributes:")
-    print(f"    result.params   →  {dict(result.params.round(4))}")
-    print(f"    result.bse      →  {dict(result.bse.round(4))}")
-    print(f"    result.rsquared →  {result.rsquared:.4f}")
+    print(f"    result.params   :  {dict(result.params.round(4))}")
+    print(f"    result.bse      :  {dict(result.bse.round(4))}")
+    print(f"    result.rsquared :  {result.rsquared:.4f}")
 
 
 # ==============================================================
@@ -273,8 +266,8 @@ def demo_reading_output() -> None:
 
     print(f"\n  n = {n},  k = {k},  df_residual = {df_resid}")
     print()
-    print(f"  {'Variable':>14} | {'β̂':>10} | {'SE(β̂)':>9} | "
-          f"{'t = β̂/SE':>10} | {'p-value':>9}")
+    print(f"  {'Variable':>14} | {'b_hat':>10} | {'SE(b_hat)':>9} | "
+          f"{'t=b/SE':>10} | {'p-value':>9}")
     print(f"  {'-'*14}-+-{'-'*10}-+-{'-'*9}-+-{'-'*10}-+-{'-'*9}")
 
     for name in result.params.index:
@@ -286,20 +279,20 @@ def demo_reading_output() -> None:
               f"{t_stat:>10.4f} | {p_val:>9.4f}")
 
     print()
-    print(f"  R²     = {result.rsquared:.4f}  →  model explains "
+    print(f"  R^2     = {result.rsquared:.4f}  ->  model explains "
           f"{result.rsquared*100:.1f}% of wage variation")
-    print(f"  Adj R² = {result.rsquared_adj:.4f}  (penalises adding irrelevant regressors)")
+    print(f"  Adj R^2 = {result.rsquared_adj:.4f}  (penalises adding irrelevant regressors)")
     print()
     print(f"  F({k}, {df_resid}) = {result.fvalue:.2f},  p = {result.f_pvalue:.2e}")
-    print("  The F-test checks H₀: β₁ = β₂ = 0 simultaneously.")
-    print("  p ≈ 0 means at least one regressor has explanatory power.")
+    print("  The F-test checks H0: b1 = b2 = 0 simultaneously.")
+    print("  p ~= 0 means at least one regressor has explanatory power.")
     print()
-    print("  Rule of thumb for t-stat significance (two-sided, α=0.05):")
-    print("  |t| > ~2.0 when df is large (t-distribution → normal).")
+    print("  Rule of thumb for t-stat significance (two-sided, alpha=0.05):")
+    print("  |t| > ~2.0 when df is large (t-distribution -> normal).")
     for name in result.params.index:
         t = result.tvalues[name]
         sig = "significant at 5%" if abs(t) > 2.0 else "NOT significant"
-        print(f"    {name:>14}: |t| = {abs(t):.2f}  →  {sig}")
+        print(f"    {name:>14}: |t| = {abs(t):.2f}  ->  {sig}")
 
 
 # ==============================================================
@@ -342,17 +335,17 @@ def demo_r_squared() -> None:
     print(f"  SS_reg = {ss_reg:>12,.2f}  (explained by educ + exper)")
     print(f"  SS_res = {ss_res:>12,.2f}  (unexplained residual)")
     print()
-    print(f"  SS_reg + SS_res = {ss_reg + ss_res:>12,.2f}  (must equal SS_tot ✓)")
+    print(f"  SS_reg + SS_res = {ss_reg + ss_res:>12,.2f}  (must equal SS_tot)")
     print()
-    print(f"  R² (manual)      = {r2:.6f}")
-    print(f"  R² (statsmodels) = {result.rsquared:.6f}")
+    print(f"  R^2 (manual)      = {r2:.6f}")
+    print(f"  R^2 (statsmodels) = {result.rsquared:.6f}")
     print()
 
-    # These are ≈ 0 by construction — a useful sanity check after any OLS fit
-    print("  OLS residual properties (≈ 0 by construction, not by luck):")
-    print(f"    Σ êᵢ          = {np.sum(e_hat):>+.2e}")
-    print(f"    Σ educ·êᵢ     = {np.sum(df['educ'].values  * e_hat):>+.2e}")
-    print(f"    Σ exper·êᵢ    = {np.sum(df['exper'].values * e_hat):>+.2e}")
+    # These are ~= 0 by construction — a useful sanity check after any OLS fit
+    print("  OLS residual properties (~= 0 by construction, not by luck):")
+    print(f"    sum(e_i)          = {np.sum(e_hat):>+.2e}")
+    print(f"    sum(educ * e_i)   = {np.sum(df['educ'].values  * e_hat):>+.2e}")
+    print(f"    sum(exper * e_i)  = {np.sum(df['exper'].values * e_hat):>+.2e}")
     print()
     print("  If any of these were large, it would indicate a programming error.")
 
@@ -365,10 +358,10 @@ def main() -> None:
     section("1. Data Generating Process (Mincer Earnings Equation)")
     demo_dgp()
 
-    section("2. OLS by Hand — Simple Regression (Closed Form)")
+    section("2. OLS by Hand - Simple Regression (Closed Form)")
     demo_ols_simple()
 
-    section("3. OLS by Hand — Multiple Regression (Matrix Form)")
+    section("3. OLS by Hand - Multiple Regression (Matrix Form)")
     demo_ols_matrix()
 
     section("4. OLS with statsmodels")
@@ -377,7 +370,7 @@ def main() -> None:
     section("5. Reading the Regression Table")
     demo_reading_output()
 
-    section("6. Fitted Values, Residuals, and R²")
+    section("6. Fitted Values, Residuals, and R^2")
     demo_r_squared()
 
 
