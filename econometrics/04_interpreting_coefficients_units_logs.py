@@ -162,3 +162,136 @@ def demo_level_level() -> None:
     print(f"    Difference (4 yrs):     ${diff:.2f}/hr  =  4 * b1 = 4 * {b1:.3f}")
     print()
     print(f"  R^2 = {result.rsquared:.4f}   (the log-level model fits better - see Section 3)")
+
+
+# ==============================================================
+# 3. Log-Level Model
+# ==============================================================
+# The most common model in labour economics:
+#   ln(wage) = b0 + b1*educ + b2*exper + eps
+#
+# Differentiating with respect to educ:
+#   d(ln wage)/d(educ) = b1
+#   (1/wage) * d(wage)/d(educ) = b1
+#   d(wage)/wage = b1 * d(educ)
+#
+# So b1 is the proportional change in wage per unit change in educ.
+# In percentage terms: a 1-unit increase in educ changes wage by
+# approximately b1*100%.
+#
+# The approximation is exact for infinitesimal changes.  For
+# discrete changes, the exact formula is:
+#   % change in wage = (exp(b1) - 1) * 100
+#
+# Rule of thumb: for |b1| < 0.10 the approximation is fine;
+# for larger coefficients always report exp(b1) - 1.
+
+def demo_log_level() -> None:
+    """
+    Fit ln(wage) ~ educ + exper, interpret the educ coefficient
+    both via the approximation and the exact exponential formula,
+    and compare R^2 with the level-level model from Section 2.
+    """
+    df = make_data()
+    result = smf.ols("log_wage ~ educ + exper", data=df).fit()
+
+    b0 = result.params["Intercept"]
+    b1 = result.params["educ"]
+    b2 = result.params["exper"]
+
+    # Approximate interpretation (valid for small b)
+    pct_approx_educ  = b1 * 100
+    pct_approx_exper = b2 * 100
+
+    # Exact interpretation using exp(b) - 1
+    pct_exact_educ  = (math.exp(b1) - 1) * 100
+    pct_exact_exper = (math.exp(b2) - 1) * 100
+
+    print(f"\n  Fitted model:  ln(wage) = {b0:.3f} + {b1:.4f}*educ + {b2:.4f}*exper")
+    print()
+    print("  Educ coefficient:")
+    print(f"    b1 = {b1:.4f}")
+    print(f"    Approx:  b1 * 100   = {pct_approx_educ:.2f}% wage increase per extra year of school")
+    print(f"    Exact:   (exp(b1)-1)*100 = {pct_exact_educ:.2f}%  (use this when b1 > 0.10)")
+    print()
+    print("  Exper coefficient:")
+    print(f"    b2 = {b2:.4f}")
+    print(f"    Approx:  {pct_approx_exper:.2f}% wage increase per extra year of experience")
+    print(f"    Exact:   {pct_exact_exper:.2f}%")
+    print()
+
+    # Concrete prediction using the log-level model
+    lw_base = b0 + b1 * 12 + b2 * 5
+    lw_more = b0 + b1 * 16 + b2 * 5
+    w_base  = math.exp(lw_base)
+    w_more  = math.exp(lw_more)
+
+    print("  Prediction example (exper=5 fixed):")
+    print(f"    educ=12:  ln(wage) = {lw_base:.3f}  ->  wage = exp({lw_base:.3f}) = ${w_base:.2f}/hr")
+    print(f"    educ=16:  ln(wage) = {lw_more:.3f}  ->  wage = exp({lw_more:.3f}) = ${w_more:.2f}/hr")
+    print(f"    4-yr effect: +{(w_more/w_base - 1)*100:.1f}%  (4 * b1*100 = {4*pct_approx_educ:.1f}% approx)")
+    print()
+    print(f"  R^2 = {result.rsquared:.4f}   (better fit than level-level {0.6674:.4f})")
+    print("  This makes sense: the DGP was log-level, so the model is correctly specified.")
+
+
+# ==============================================================
+# 4. Level-Log Model
+# ==============================================================
+# Less common, but useful when the REGRESSOR has diminishing returns:
+#   wage = b0 + b1*ln(educ) + b2*exper + eps
+#
+# Differentiating with respect to educ:
+#   d(wage)/d(educ) = b1 * (1/educ)
+#
+# Rearranging in terms of a 1% change in educ (d(educ)/educ = 0.01):
+#   d(wage) = b1 * (d(educ)/educ) = b1 * 0.01
+#
+# So: a 1% increase in educ raises wage by b1/100 dollars.
+# Equivalently: doubling educ (100% increase) raises wage by b1 dollars.
+#
+# This model says the RETURN to schooling is diminishing:
+# going from 8 to 9 years of school has a larger absolute effect
+# than going from 18 to 19 years.
+
+def demo_level_log() -> None:
+    """
+    Fit wage ~ log(educ) + exper and interpret the log-educ coefficient.
+    Show how to answer "what is the predicted wage change for a 10% and
+    100% increase in educ?"
+    """
+    df = make_data()
+    result = smf.ols("wage ~ log_educ + exper", data=df).fit()
+
+    b0 = result.params["Intercept"]
+    b1 = result.params["log_educ"]   # coefficient on ln(educ)
+    b2 = result.params["exper"]
+
+    print(f"\n  Fitted model:  wage = {b0:.3f} + {b1:.3f}*ln(educ) + {b2:.3f}*exper")
+    print()
+    print("  Coefficient on ln(educ):")
+    print(f"    b1 = {b1:.3f}")
+    print(f"    +1% in educ  -> +b1/100 = +${b1/100:.3f}/hr")
+    print(f"    +10% in educ -> +b1*ln(1.10) = +${b1 * math.log(1.10):.3f}/hr")
+    print(f"    +100% in educ (doubling) -> +b1*ln(2) = +${b1 * math.log(2):.3f}/hr")
+    print()
+
+    # Diminishing returns: compare marginal effect at low vs high educ
+    # d(wage)/d(educ) = b1 / educ
+    marg_8  = b1 / 8
+    marg_16 = b1 / 16
+    print("  Diminishing marginal returns (d(wage)/d(educ) = b1/educ):")
+    print(f"    At educ=8:   one more year of school -> +${marg_8:.3f}/hr")
+    print(f"    At educ=16:  one more year of school -> +${marg_16:.3f}/hr")
+    print(f"    The return at educ=8 is {marg_8/marg_16:.1f}x larger than at educ=16.")
+    print()
+
+    # Prediction comparison
+    w_base = b0 + b1 * math.log(12) + b2 * 5
+    w_more = b0 + b1 * math.log(16) + b2 * 5
+    print("  Prediction example (exper=5 fixed):")
+    print(f"    educ=12:  wage = {b0:.3f} + {b1:.3f}*ln(12) + {b2:.3f}*5 = ${w_base:.2f}/hr")
+    print(f"    educ=16:  wage = {b0:.3f} + {b1:.3f}*ln(16) + {b2:.3f}*5 = ${w_more:.2f}/hr")
+    print(f"    Difference: ${w_more - w_base:.2f}/hr  =  b1 * ln(16/12) = {b1:.3f} * {math.log(16/12):.4f}")
+    print()
+    print(f"  R^2 = {result.rsquared:.4f}")
