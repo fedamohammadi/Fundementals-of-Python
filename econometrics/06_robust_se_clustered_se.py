@@ -270,3 +270,126 @@ def demo_clustered_se() -> None:
     print("  The clustered SE is the largest of the three because it accounts")
     print("  for both heteroskedasticity AND within-firm correlation.")
     print("  If the clustered SE is close to OLS, clustering may not matter much.")
+
+
+# ==============================================================
+# 5. False Positive Rates Under Different SE Types
+# ==============================================================
+# The best way to see why SE type matters is to run a simulation
+# where b_educ is truly zero and count how often each SE type
+# wrongly rejects H0: b_educ = 0 at the 5% level.
+#
+# If SEs are correct, the rejection rate should be ~5%.
+# Rejection rates well above 5% mean the SE is too small (anti-conservative).
+# This is the core problem with ignoring clustering.
+
+def demo_false_positive_rates(n_sims: int = 300) -> None:
+    """
+    Simulate data where b_educ = 0 (no true effect).
+    Count the share of simulations where each SE type rejects H0.
+    A correct SE should reject about 5% of the time.
+    """
+    reject_ols     = 0
+    reject_hc1     = 0
+    reject_cluster = 0
+
+    for i in range(n_sims):
+        rng = np.random.default_rng(i)
+
+        firm_shock = np.repeat(rng.normal(0, 0.4, N_FIRMS), N_WORKERS)
+        educ       = rng.integers(8, 22, size=N_FIRMS * N_WORKERS).astype(float)
+        exper      = rng.integers(0, 41, size=N_FIRMS * N_WORKERS).astype(float)
+        firm_id    = np.repeat(np.arange(N_FIRMS), N_WORKERS)
+
+        # b_educ = 0 by construction
+        log_wage = 1.6 + 0.0 * educ + 0.008 * exper + firm_shock + rng.normal(0, 0.2, N_FIRMS * N_WORKERS)
+
+        df = pd.DataFrame({"log_wage": log_wage, "educ": educ, "exper": exper, "firm_id": firm_id})
+
+        fit      = smf.ols("log_wage ~ educ + exper", data=df).fit()
+        fit_hc1  = fit.get_robustcov_results(cov_type="HC1")
+        fit_cl   = fit.get_robustcov_results(cov_type="cluster", groups=df["firm_id"])
+
+        reject_ols     += int(fit.pvalues["educ"]     < 0.05)
+        reject_hc1     += int(fit_hc1.pvalues["educ"] < 0.05)
+        reject_cluster += int(fit_cl.pvalues["educ"]  < 0.05)
+
+    print(f"\n  Simulation: b_educ = 0 (no true effect), {n_sims} runs, alpha = 5%")
+    print()
+    print(f"  {'SE type':>15} | {'False positive rate':>20} | Assessment")
+    print(f"  {'-'*15}-+-{'-'*20}-+-{'-'*30}")
+    for label, count in [("OLS", reject_ols), ("HC1 robust", reject_hc1), ("Clustered", reject_cluster)]:
+        rate = count / n_sims
+        ok   = "OK" if abs(rate - 0.05) < 0.03 else "TOO HIGH -- anti-conservative"
+        print(f"  {label:>15} | {rate:>19.1%} | {ok}")
+
+    print()
+    print("  OLS and HC1 reject too often because they treat 1000 correlated")
+    print("  observations as 1000 independent pieces of information.")
+    print("  Clustered SEs restore the rejection rate close to the nominal 5%.")
+
+
+# ==============================================================
+# 6. Two-Way Clustering (Brief Introduction)
+# ==============================================================
+# Sometimes observations are cross-classified in two dimensions:
+#   - worker i in firm g AND year t
+#   - student in school AND district
+#
+# Two-way clustered SEs account for correlation both within firms
+# across years AND within years across firms:
+#   Var_2way = Var_firm + Var_year - Var_{firm x year}
+#
+# statsmodels does not have native two-way clustering, but it can
+# be approximated with the Cameron-Gelbach-Miller (CGM) formula
+# by fitting the model three times (firm, year, and firm*year groups)
+# and combining the resulting variance matrices.
+#
+# This section shows the CGM formula numerically for a dataset that
+# has both firm and year dimensions.
+
+def cgm_two_way_se(formula: str, data: pd.DataFrame,
+                   group1: pd.Series, group2: pd.Series) -> pd.Series:
+    """
+    Cameron-Gelbach-Miller two-way clustered SE.
+    Returns a Series of standard errors indexed by parameter name.
+    """
+    fit  = smf.ols(formula, data=data).fit()
+    v1   = fit.get_robustcov_results(cov_type="cluster", groups=group1).cov_params()
+    v2   = fit.get_robustcov_results(cov_type="cluster", groups=group2).cov_params()
+    v12  = fit.get_robustcov_results(cov_type="cluster", groups=group1.astype(str) + "_" + group2.astype(str)).cov_params()
+    v_2way = v1 + v2 - v12
+    return pd.Series(np.sqrt(np.diag(v_2way)), index=fit.params.index)
+
+
+def demo_two_way_clustering() -> None:
+    """
+    Add a year dimension to the dataset and compare one-way firm
+    clustering to two-way firm + year clustering.
+    """
+    rng = np.random.default_rng(42)
+    df  = make_data()
+    n   = len(df)
+
+    # Assign each worker randomly to one of 10 years
+    df["year"]       = rng.integers(2010, 2020, size=n)
+    year_shock       = df["year"].map({y: rng.normal(0, 0.15) for y in range(2010, 2020)})
+    df["log_wage"]  += year_shock
+
+    se_firm     = smf.ols("log_wage ~ educ + exper", data=df).fit().get_robustcov_results(
+        cov_type="cluster", groups=df["firm_id"]).bse
+    se_two_way  = cgm_two_way_se("log_wage ~ educ + exper", df, df["firm_id"], df["year"])
+
+    print(f"\n  Two-way clustering: firms ({N_FIRMS}) x years (10)")
+    print()
+    print(f"  {'Parameter':>12} | {'Firm-only SE':>14} | {'Two-way SE':>12} | Change")
+    print(f"  {'-'*12}-+-{'-'*14}-+-{'-'*12}-+-{'-'*10}")
+    for param in ["Intercept", "educ", "exper"]:
+        s1 = se_firm[param]
+        s2 = se_two_way[param]
+        print(f"  {param:>12} | {s1:>14.5f} | {s2:>12.5f} | {(s2 - s1) / s1:>+.1%}")
+
+    print()
+    print("  Two-way SEs are typically larger than one-way SEs.")
+    print("  Use two-way clustering whenever shocks vary along two dimensions")
+    print("  that both affect your outcome (e.g., firm and time period).")
