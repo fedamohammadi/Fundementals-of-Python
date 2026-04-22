@@ -393,3 +393,81 @@ def demo_two_way_clustering() -> None:
     print("  Two-way SEs are typically larger than one-way SEs.")
     print("  Use two-way clustering whenever shocks vary along two dimensions")
     print("  that both affect your outcome (e.g., firm and time period).")
+
+
+# ==============================================================
+# 7. Side-by-Side Comparison of All SE Types
+# ==============================================================
+# A summary table showing all five SE variants on the same model.
+# This is the output you would include in an empirical paper's
+# appendix to demonstrate robustness of your main results.
+
+def demo_full_comparison() -> None:
+    """
+    Fit one model and print a coefficient table under five SE types:
+    OLS, HC0, HC1, HC3, and cluster-robust.
+    """
+    df  = make_data()
+    fit = smf.ols("log_wage ~ educ + exper", data=df).fit()
+
+    variants = {
+        "OLS":       fit.get_robustcov_results(cov_type="nonrobust"),
+        "HC0":       fit.get_robustcov_results(cov_type="HC0"),
+        "HC1":       fit.get_robustcov_results(cov_type="HC1"),
+        "HC3":       fit.get_robustcov_results(cov_type="HC3"),
+        "Clustered": fit.get_robustcov_results(cov_type="cluster", groups=df["firm_id"]),
+    }
+
+    for param in ["educ", "exper"]:
+        print(f"\n  Coefficient: {param}  (point estimate = {fit.params[param]:.5f})")
+        print(f"  {'SE type':>10} | {'SE':>9} | {'t-stat':>8} | {'p-value':>8} | {'95% CI lower':>13} | {'95% CI upper':>13}")
+        print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*8}-+-{'-'*8}-+-{'-'*13}-+-{'-'*13}")
+        for label, res in variants.items():
+            se  = res.bse[param]
+            t   = res.tvalues[param]
+            p   = res.pvalues[param]
+            ci  = res.conf_int().loc[param]
+            print(f"  {label:>10} | {se:>9.5f} | {t:>8.3f} | {p:>8.4f} | {ci[0]:>13.5f} | {ci[1]:>13.5f}")
+
+    print()
+    print("  Key observation:")
+    print("    All five types give the same point estimate.")
+    print("    HC variants are larger than OLS SE -- heteroskedasticity is present.")
+    print("    Clustered SE is the largest -- within-firm correlation adds further uncertainty.")
+
+
+# ==============================================================
+# 8. Practical Decision Guide
+# ==============================================================
+# A quick flowchart for choosing the right SE in practice.
+
+def demo_decision_guide() -> None:
+    """Print a decision flowchart for selecting the appropriate SE type."""
+    guide = [
+        ("Are observations grouped in clusters?",
+         "No  -> use HC1 robust SEs. Done.",
+         "Yes -> continue below."),
+
+        ("Do you have at least 30-50 clusters?",
+         "No  -> use wild cluster bootstrap (not shown here; see Cameron & Miller 2015).",
+         "Yes -> use cluster-robust SEs."),
+
+        ("Do observations cluster along TWO dimensions (e.g., firm x year)?",
+         "No  -> one-way clustered SEs on the primary dimension.",
+         "Yes -> two-way clustered SEs (CGM formula from Section 6)."),
+
+        ("Are results sensitive to SE choice?",
+         "No  -> any reasonable SE type gives the same conclusion; report HC1.",
+         "Yes -> report multiple SE types in a robustness table."),
+    ]
+
+    print()
+    for i, (question, no_branch, yes_branch) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {no_branch}")
+        print(f"    {yes_branch}")
+        print()
+
+    print("  General rule: when in doubt, use cluster-robust SEs at the")
+    print("  most natural level of treatment assignment (the cluster at")
+    print("  which the policy or intervention varies across observations).")
