@@ -158,3 +158,115 @@ def demo_hc_robust_se() -> None:
     print("  HC1 and HC3 SEs are larger than OLS -- correct direction.")
     print("  The point estimates do not change; only the uncertainty does.")
     print("  Use HC3 in small samples; HC1 is standard in most applied work.")
+
+
+# ==============================================================
+# 3. Intra-Cluster Correlation (ICC)
+# ==============================================================
+# When observations are grouped (students in schools, workers in
+# firms, patients in hospitals), residuals within the same group
+# are often correlated. OLS treats all observations as independent,
+# so it overcounts the effective sample size and produces SEs that
+# are too small.
+#
+# The intra-cluster correlation (ICC) measures how similar
+# observations within a cluster are relative to the overall variance:
+#   ICC = variance_between_clusters / total_variance
+#
+# ICC = 0  ->  no clustering problem; OLS SEs are fine.
+# ICC > 0  ->  observations within a cluster carry less new information
+#              than OLS assumes; standard SEs are too optimistic.
+
+def compute_icc(residuals: pd.Series, cluster_id: pd.Series) -> float:
+    """
+    Estimate ICC using a one-way ANOVA decomposition of the residuals.
+    Returns the fraction of total variance explained by cluster membership.
+    """
+    overall_mean = residuals.mean()
+    cluster_means = residuals.groupby(cluster_id).mean()
+    cluster_sizes = residuals.groupby(cluster_id).count()
+
+    ss_between = (cluster_sizes * (cluster_means - overall_mean) ** 2).sum()
+    ss_total   = ((residuals - overall_mean) ** 2).sum()
+
+    return float(ss_between / ss_total)
+
+
+def demo_icc() -> None:
+    """
+    Show that the firm-level shock in our dataset creates meaningful
+    within-firm correlation, which is exactly what clustered SEs correct for.
+    Also show that ICC rises as the firm shock variance increases.
+    """
+    df     = make_data()
+    result = smf.ols("log_wage ~ educ + exper", data=df).fit()
+
+    icc = compute_icc(result.resid, df["firm_id"])
+
+    print(f"\n  Dataset: {N_FIRMS} firms x {N_WORKERS} workers = {N_FIRMS * N_WORKERS} obs")
+    print(f"  Estimated ICC of OLS residuals: {icc:.4f}")
+    print()
+    print("  Interpretation:")
+    if icc < 0.05:
+        print("  ICC < 0.05: mild clustering. HC robust SEs may be sufficient.")
+    elif icc < 0.20:
+        print("  ICC in 0.05-0.20: moderate clustering. Clustered SEs recommended.")
+    else:
+        print("  ICC > 0.20: strong clustering. Clustered SEs are essential.")
+
+    print()
+    print("  Rule of thumb: if you can think of a reason why two observations")
+    print("  share a common unobserved factor, use clustered SEs.")
+    print("  Examples: students in the same class, states under the same policy,")
+    print("  repeated observations on the same individual over time.")
+
+
+# ==============================================================
+# 4. Clustered Standard Errors
+# ==============================================================
+# Clustered SEs are a generalisation of HC robust SEs where the
+# 'meat' of the sandwich sums over clusters rather than individuals:
+#   Var_cluster[b] = (X'X)^-1 * (sum_g X_g' e_g e_g' X_g) * (X'X)^-1
+#
+# where g indexes clusters and e_g is the vector of residuals for
+# cluster g. This allows arbitrary correlation within each cluster
+# while assuming independence across clusters.
+#
+# In statsmodels: fit(cov_type='cluster', cov_kwds={'groups': cluster_var})
+#
+# Key requirement: enough clusters. With fewer than ~30-50 clusters
+# the cluster-robust variance estimator itself becomes unreliable.
+# The wild cluster bootstrap is preferred in small-cluster settings.
+
+def demo_clustered_se() -> None:
+    """
+    Fit OLS with and without clustered SEs (clustering on firm_id).
+    Compare the SE, t-statistic, and p-value for b_educ to show how
+    much clustering matters once within-firm correlation is present.
+    """
+    df = make_data()
+
+    fit_ols      = smf.ols("log_wage ~ educ + exper", data=df).fit()
+    fit_hc1      = fit_ols.get_robustcov_results(cov_type="HC1")
+    fit_cluster  = fit_ols.get_robustcov_results(
+        cov_type="cluster",
+        groups=df["firm_id"],
+    )
+
+    print(f"\n  b_educ = {fit_ols.params['educ']:.5f}  (same across all SE types)")
+    print()
+    print(f"  {'SE type':>15} | {'SE(educ)':>10} | {'t(educ)':>9} | {'p(educ)':>9} | 95% CI")
+    print(f"  {'-'*15}-+-{'-'*10}-+-{'-'*9}-+-{'-'*9}-+-{'-'*22}")
+
+    for label, res in [("OLS", fit_ols), ("HC1 robust", fit_hc1), ("Clustered", fit_cluster)]:
+        se  = res.bse["educ"]
+        t   = res.tvalues["educ"]
+        p   = res.pvalues["educ"]
+        ci  = res.conf_int().loc["educ"]
+        print(f"  {label:>15} | {se:>10.5f} | {t:>9.3f} | {p:>9.4f} | "
+              f"[{ci[0]:.4f}, {ci[1]:.4f}]")
+
+    print()
+    print("  The clustered SE is the largest of the three because it accounts")
+    print("  for both heteroskedasticity AND within-firm correlation.")
+    print("  If the clustered SE is close to OLS, clustering may not matter much.")
