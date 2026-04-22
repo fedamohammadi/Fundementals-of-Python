@@ -398,3 +398,157 @@ def demo_normality_tests() -> None:
     print("    Even mild non-normality in the dirty data triggers rejection.")
     print("    This matters less for inference than heteroskedasticity does,")
     print("    but matters for prediction intervals and likelihood-based tests.")
+
+
+# ==============================================================
+# 5. Influential Observations: Leverage and Cook's Distance
+# ==============================================================
+# Not all observations affect OLS estimates equally.
+# Two concepts measure how much influence a single observation has:
+#
+#   Leverage (h_ii)
+#     Measures how unusual observation i's X values are.
+#     h_ii is the i-th diagonal of the hat matrix H = X(X'X)⁻¹X'.
+#     Range: 1/n ≤ h_ii ≤ 1.
+#     A point with high leverage sits far from the centre of X-space.
+#     High leverage alone is not a problem — unless it also has a
+#     large residual (then it can pull the regression line toward itself).
+#     Rule of thumb: h_ii > 2*(k+1)/n is "high leverage" (k = # regressors).
+#
+#   Cook's Distance (D_i)
+#     Combines leverage AND residual size into one influence measure.
+#     D_i measures how much all n fitted values would change if
+#     observation i were deleted.
+#     D_i = (e_i² / (k+1) * s²) * (h_ii / (1 - h_ii)²)
+#     Rule of thumb: D_i > 4/n is commonly flagged as influential.
+#     D_i > 1 is a more conservative "definitely investigate" threshold.
+#
+#   Studentized residuals (also called externally studentized)
+#     Scale the residual by its own standard error, which accounts
+#     for the observation's leverage.
+#     |r_i| > 2 is a common threshold for "outlier".
+#     Unlike raw residuals, studentized residuals are comparable
+#     across observations.
+#
+# What to do with influential observations:
+#   1. Check for data entry errors first.
+#   2. Report results with and without the point.
+#   3. If the point is genuine, consider a robust regression method.
+
+def demo_influential_observations() -> None:
+    """
+    Fit the clean model, extract leverage and Cook's distance from
+    the OLS influence measures, and identify the top influential points.
+    Then show what happens to coefficients when those points are removed.
+    """
+    df     = make_clean_data()
+    result = smf.ols("log_wage ~ educ + exper", data=df).fit()
+
+    influence  = result.get_influence()
+    leverage   = influence.hat_matrix_diag          # h_ii for each observation
+    cooks_d    = influence.cooks_distance[0]        # Cook's D for each observation
+    stud_resid = influence.resid_studentized_external  # studentized residuals
+
+    n = len(df)
+    k = 2                                           # number of regressors (educ, exper)
+    lev_threshold   = 2 * (k + 1) / n              # high leverage threshold
+    cooks_threshold = 4 / n                         # common Cook's D flag
+
+    # Count observations exceeding each threshold
+    n_high_lev   = (leverage   > lev_threshold).sum()
+    n_high_cooks = (cooks_d    > cooks_threshold).sum()
+    n_outliers   = (np.abs(stud_resid) > 2).sum()
+
+    print(f"\n  Thresholds:  leverage > {lev_threshold:.4f}  |  Cook's D > {cooks_threshold:.4f}  |  |stud. resid| > 2")
+    print(f"  Flagged observations:")
+    print(f"    High leverage   : {n_high_lev:>4} / {n}")
+    print(f"    High Cook's D   : {n_high_cooks:>4} / {n}")
+    print(f"    Outliers (|r|>2): {n_outliers:>4} / {n}")
+
+    # Show the top 5 most influential observations by Cook's D
+    top5_idx = np.argsort(cooks_d)[::-1][:5]
+    print(f"\n  Top 5 most influential observations (by Cook's D):")
+    print(f"  {'obs':>5} | {'educ':>6} | {'exper':>6} | {'leverage':>10} | {'Cook D':>10} | {'stud resid':>12}")
+    print(f"  {'-'*5}-+-{'-'*6}-+-{'-'*6}-+-{'-'*10}-+-{'-'*10}-+-{'-'*12}")
+    for i in top5_idx:
+        print(f"  {i:>5} | {df['educ'].iloc[i]:>6.0f} | {df['exper'].iloc[i]:>6.0f} | "
+              f"{leverage[i]:>10.4f} | {cooks_d[i]:>10.4f} | {stud_resid[i]:>12.4f}")
+
+    # Show coefficient stability: all data vs. removing top influencer
+    top1_idx = top5_idx[0]
+    df_drop  = df.drop(index=df.index[top1_idx])
+    res_drop = smf.ols("log_wage ~ educ + exper", data=df_drop).fit()
+
+    print(f"\n  Effect of removing observation {top1_idx} (most influential):")
+    print(f"  {'Coefficient':>12} | {'Full sample':>12} | {'Obs removed':>12} | {'Change':>10}")
+    print(f"  {'-'*12}-+-{'-'*12}-+-{'-'*12}-+-{'-'*10}")
+    for param in ["Intercept", "educ", "exper"]:
+        b_full = result.params[param]
+        b_drop = res_drop.params[param]
+        print(f"  {param:>12} | {b_full:>12.6f} | {b_drop:>12.6f} | {b_drop - b_full:>+10.6f}")
+
+    print()
+    print("  On clean simulated data, no single point moves coefficients much.")
+    print("  In real data, large changes here would warrant closer investigation.")
+
+
+# ==============================================================
+# 6. The Ramsey RESET Test (Functional Form Misspecification)
+# ==============================================================
+# The RESET (Regression Equation Specification Error Test) checks
+# whether the functional form of the model is correct.
+#
+# Idea: if the model is correctly specified, adding powers of the
+# fitted values (ŷ², ŷ³) to the regression should not improve fit.
+# If they do help, some non-linearity is being missed by the model.
+#
+# Procedure:
+#   1. Fit the original model: y = Xb + eps  ->  get ŷ
+#   2. Fit the augmented model: y = Xb + c1*ŷ² + c2*ŷ³ + eps
+#   3. Test H0: c1 = c2 = 0  using an F-test.
+#   4. Rejecting H0 means the model is likely misspecified.
+#
+# Important: RESET tells you THAT there is a problem, not WHAT it is.
+# It cannot distinguish between a missing variable, wrong functional
+# form, or an interaction effect — you must diagnose further.
+#
+# Common cause in practice: fitting a level-level model when the
+# true relationship is log-level or log-log.
+
+def demo_reset_test() -> None:
+    """
+    Run the RESET test in two scenarios:
+      (a) Correctly specified log-level model on clean data  -> should pass
+      (b) Misspecified level-level model on the same data    -> should fail
+    This shows that RESET detects the misspecification caused by
+    fitting a linear model to data generated from a log-linear DGP.
+    """
+    df = make_clean_data()
+
+    # Correctly specified: ln(wage) ~ educ + exper
+    fit_correct = smf.ols("log_wage ~ educ + exper", data=df).fit()
+
+    # Misspecified: wage ~ educ + exper (ignoring the log transformation)
+    fit_wrong   = smf.ols("wage ~ educ + exper", data=df).fit()
+
+    print(f"\n  RESET test: H0 = model is correctly specified (no omitted non-linearity)")
+    print(f"  {'Model':>45} | {'F-stat':>8} | {'p-value':>8} | Verdict")
+    print(f"  {'-'*45}-+-{'-'*8}-+-{'-'*8}-+-{'-'*25}")
+
+    for fit, label in [
+        (fit_correct, "Correct: ln(wage) ~ educ + exper"),
+        (fit_wrong,   "Wrong:      wage  ~ educ + exper"),
+    ]:
+        reset = diag.linear_reset(fit, power=3, use_f=True)
+        f_stat = float(reset.statistic)
+        p_val  = float(reset.pvalue)
+        verdict = "REJECT H0 (misspecified)" if p_val < 0.05 else "Fail to reject H0"
+        print(f"  {label:>45} | {f_stat:>8.4f} | {p_val:>8.4f} | {verdict}")
+
+    print()
+    print("  The correctly-specified log-level model passes RESET.")
+    print("  The level-level model fails RESET — the squared and cubed fitted")
+    print("  values are statistically significant, revealing the missing log structure.")
+    print()
+    print("  RESET tells you the form is wrong; it does not tell you the fix.")
+    print("  The natural next step is to try log transformations and re-test.")
