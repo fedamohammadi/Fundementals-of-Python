@@ -9,7 +9,7 @@ Model Diagnostics and Residual Analysis:
 - A diagnostic checklist and what to do when checks fail
 
 After fitting any OLS model, residuals are the first thing to examine.
-A 'good-looking' R² is no substitute for verifying the assumptions.
+A 'good-looking' R2 is no substitute for verifying the assumptions.
 """
 
 import numpy as np
@@ -33,11 +33,11 @@ def section(title: str) -> None:
 #
 #   clean_data : satisfies all OLS assumptions
 #       ln(wage) = 1.6 + 0.10*educ + 0.008*exper + eps
-#       eps ~ N(0, 0.25²)  — homoskedastic errors
+#       eps ~ N(0, 0.25²)  -homoskedastic errors
 #
 #   dirty_data : intentionally breaks assumptions so diagnostics
 #       can detect the problems:
-#       (a) heteroskedastic errors — variance grows with educ
+#       (a) heteroskedastic errors -variance grows with educ
 #       (b) a misspecified functional form (left as level-level
 #           when the true DGP is log-level)
 #
@@ -133,24 +133,24 @@ def demo_what_are_residuals() -> None:
     residuals = result.resid
 
     print("\n  First 6 observations:")
-    print(f"  {'i':>4} | {'log_wage (y)':>14} | {'fitted (ŷ)':>12} | {'residual (e)':>14}")
+    print(f"  {'i':>4} | {'log_wage (y)':>14} | {'fitted (y_hat)':>14} | {'residual (e)':>14}")
     print(f"  {'-'*4}-+-{'-'*14}-+-{'-'*12}-+-{'-'*14}")
     for i in range(6):
         y_i  = df["log_wage"].iloc[i]
         yhat = fitted.iloc[i]
         e_i  = residuals.iloc[i]
-        print(f"  {i+1:>4} | {y_i:>14.6f} | {yhat:>12.6f} | {e_i:>14.6f}")
+        print(f"  {i+1:>4} | {y_i:>14.6f} | {yhat:>14.6f} | {e_i:>14.6f}")
 
     print()
     sum_resid   = residuals.sum()
     corr_ey_hat = np.corrcoef(residuals, fitted)[0, 1]
     print(f"  OLS identities (always true by construction):")
     print(f"    Sum of residuals       = {sum_resid:.2e}   (should be ~0)")
-    print(f"    Corr(residuals, ŷ)     = {corr_ey_hat:.2e}  (should be ~0)")
+    print(f"    Corr(residuals, y_hat) = {corr_ey_hat:.2e}  (should be ~0)")
     print()
     print(f"  Residual summary statistics:")
     print(f"    Mean  : {residuals.mean():.6f}")
-    print(f"    Std   : {residuals.std():.6f}   (estimates σ ≈ {CLEAN_ERROR_STD})")
+    print(f"    Std   : {residuals.std():.6f}   (estimates sigma ~ {CLEAN_ERROR_STD})")
     print(f"    Min   : {residuals.min():.6f}")
     print(f"    Max   : {residuals.max():.6f}")
     print()
@@ -164,18 +164,18 @@ def demo_what_are_residuals() -> None:
 # The residual-vs-fitted plot (e_i on y-axis, ŷ_i on x-axis) is the
 # single most important diagnostic plot.  Two patterns to look for:
 #
-#   Pattern 1 — Curvature (non-linearity):
+#   Pattern 1 -Curvature (non-linearity):
 #     Residuals form a U-shape or inverted-U around zero.
 #     Cause: you fit a linear model to a non-linear relationship.
 #     Fix:   add polynomial terms or use logs.
 #
-#   Pattern 2 — Funnel / fan shape (heteroskedasticity):
+#   Pattern 2 -Funnel / fan shape (heteroskedasticity):
 #     The spread of residuals grows (or shrinks) with ŷ.
 #     Cause: the error variance is not constant.
 #     Fix:   use robust standard errors, or WLS, or log-transform y.
 #
 # A clean model produces residuals scattered randomly around zero
-# with constant width — no patterns, no trends.
+# with constant width -no patterns, no trends.
 #
 # Since we cannot show actual plots in a terminal, we summarise
 # the residual spread in bins of fitted values, which gives the
@@ -227,7 +227,7 @@ def demo_residual_vs_fitted() -> None:
     print()
     std_clean = fit_clean.resid.std()
     std_dirty = fit_dirty.resid.std()
-    print(f"  Overall residual std — clean: {std_clean:.4f}  |  dirty: {std_dirty:.4f}")
+    print(f"  Overall residual std - clean: {std_clean:.4f}  |  dirty: {std_dirty:.4f}")
     print("  The dirty dataset has larger overall variance because higher-educ")
     print("  observations contribute disproportionately large residuals.")
 
@@ -245,7 +245,7 @@ def demo_residual_vs_fitted() -> None:
 #     H0: error variance is constant (homoskedastic)
 #     Procedure: regress squared residuals on the regressors.
 #       If regressors explain the squared residuals, variance is
-#       not constant.  The test statistic is LM = n * R² from that
+#       not constant.  The test statistic is LM = n * R2 from that
 #       auxiliary regression; it follows χ²(k) under H0.
 #     Best when: heteroskedasticity is a linear function of X.
 #
@@ -273,7 +273,7 @@ def run_het_tests(result, label: str) -> None:
     wh_stat, wh_pval, _, _ = diag.het_white(result.resid, result.model.exog)
 
     print(f"\n  [{label}]")
-    print(f"  {'Test':>20} | {'Statistic':>10} | {'p-value':>10} | Verdict (α=0.05)")
+    print(f"  {'Test':>20} | {'Statistic':>10} | {'p-value':>10} | Verdict (a=0.05)")
     print(f"  {'-'*20}-+-{'-'*10}-+-{'-'*10}-+-{'-'*25}")
     for name, stat, pval in [("Breusch-Pagan", bp_stat, bp_pval),
                               ("White",         wh_stat, wh_pval)]:
@@ -294,16 +294,16 @@ def demo_heteroskedasticity_tests() -> None:
     fit_clean = smf.ols("log_wage ~ educ + exper", data=df_clean).fit()
     fit_dirty = smf.ols("log_wage ~ educ + exper", data=df_dirty).fit()
 
-    run_het_tests(fit_clean, "Clean data — expect H0 not rejected")
-    run_het_tests(fit_dirty, "Dirty data — expect H0 rejected")
+    run_het_tests(fit_clean, "Clean data -expect H0 not rejected")
+    run_het_tests(fit_dirty, "Dirty data -expect H0 rejected")
 
     print()
     print("  Interpretation:")
-    print("    Clean: both tests fail to reject H0 — no evidence of heteroskedasticity.")
-    print("    Dirty: both tests reject H0 — variance is not constant across observations.")
+    print("    Clean: both tests fail to reject H0 -no evidence of heteroskedasticity.")
+    print("    Dirty: both tests reject H0 -variance is not constant across observations.")
     print()
     print("  What to do when you detect heteroskedasticity:")
-    print("    1. Use robust standard errors (HC1 or HC3) — see file 06.")
+    print("    1. Use robust standard errors (HC1 or HC3) -see file 06.")
     print("    2. Check whether a log transformation of y removes the pattern.")
     print("    3. If the variance function is known, use weighted least squares (WLS).")
 
@@ -336,7 +336,7 @@ def demo_heteroskedasticity_tests() -> None:
 #       JB = (n/6) * [S² + (K-3)²/4]
 #       where S = skewness, K = kurtosis.
 #     JB ~ χ²(2) under H0.
-#     Sensitive to large n — even tiny non-normality can be detected
+#     Sensitive to large n -even tiny non-normality can be detected
 #     in samples of 500+, even when it does not matter in practice.
 
 def qq_summary(residuals: pd.Series, label: str) -> None:
@@ -388,7 +388,7 @@ def demo_normality_tests() -> None:
         print(f"    Skewness       : {skew:>8.4f}  (Normal = 0)")
         print(f"    Excess kurtosis: {kurt:>8.4f}  (Normal = 0; >0 = heavy tails)")
         print(f"    Jarque-Bera    : stat={jb_stat:.4f},  p={jb_pval:.4f}  "
-              f"({'reject H0' if jb_pval < 0.05 else 'fail to reject H0'} at α=0.05)")
+              f"({'reject H0' if jb_pval < 0.05 else 'fail to reject H0'} at a=0.05)")
 
         qq_summary(resid, "Q-Q percentile check")
 
@@ -411,7 +411,7 @@ def demo_normality_tests() -> None:
 #     h_ii is the i-th diagonal of the hat matrix H = X(X'X)⁻¹X'.
 #     Range: 1/n ≤ h_ii ≤ 1.
 #     A point with high leverage sits far from the centre of X-space.
-#     High leverage alone is not a problem — unless it also has a
+#     High leverage alone is not a problem -unless it also has a
 #     large residual (then it can pull the regression line toward itself).
 #     Rule of thumb: h_ii > 2*(k+1)/n is "high leverage" (k = # regressors).
 #
@@ -510,7 +510,7 @@ def demo_influential_observations() -> None:
 #
 # Important: RESET tells you THAT there is a problem, not WHAT it is.
 # It cannot distinguish between a missing variable, wrong functional
-# form, or an interaction effect — you must diagnose further.
+# form, or an interaction effect -you must diagnose further.
 #
 # Common cause in practice: fitting a level-level model when the
 # true relationship is log-level or log-log.
@@ -547,8 +547,167 @@ def demo_reset_test() -> None:
 
     print()
     print("  The correctly-specified log-level model passes RESET.")
-    print("  The level-level model fails RESET — the squared and cubed fitted")
+    print("  The level-level model fails RESET -the squared and cubed fitted")
     print("  values are statistically significant, revealing the missing log structure.")
     print()
     print("  RESET tells you the form is wrong; it does not tell you the fix.")
     print("  The natural next step is to try log transformations and re-test.")
+
+
+# ==============================================================
+# 7. Full Diagnostic Checklist
+# ==============================================================
+# Running all diagnostics in one place mirrors the workflow you
+# would follow in a real empirical project.  The checklist is:
+#
+#   Step 1  Fit the model and inspect R2 and the coefficient table.
+#   Step 2  Residual-vs-fitted bins: is the spread constant?
+#   Step 3  Breusch-Pagan + White: formal heteroskedasticity tests.
+#   Step 4  Jarque-Bera + skewness/kurtosis: normality of residuals.
+#   Step 5  Leverage + Cook's D: are any observations too influential?
+#   Step 6  RESET test: does the functional form look right?
+#
+# This function wraps all earlier demos into a single summary report
+# that prints a PASS/FAIL for each check, making it easy to spot
+# which assumption is violated and needs attention.
+
+def run_full_diagnostic(formula: str, data: pd.DataFrame, label: str) -> None:
+    """
+    Fit the given OLS formula on data and run all six diagnostics.
+    Print a compact PASS/FAIL report for each assumption.
+    """
+    result    = smf.ols(formula, data=data).fit()
+    n         = result.nobs
+    k         = result.df_model      # number of regressors (excluding intercept)
+    resid     = result.resid
+    influence = result.get_influence()
+
+    # --- Step 2: residual spread (std ratio across bins) ---
+    bins      = pd.cut(result.fittedvalues, bins=4)
+    bin_stds  = resid.groupby(bins, observed=True).std()
+    spread_ratio = bin_stds.max() / bin_stds.min()   # close to 1 is good
+
+    # --- Step 3: heteroskedasticity tests ---
+    bp_stat, bp_pval, _, _ = diag.het_breuschpagan(resid, result.model.exog)
+    wh_stat, wh_pval, _, _ = diag.het_white(resid, result.model.exog)
+
+    # --- Step 4: normality ---
+    jb_stat, jb_pval = stattools.jarque_bera(resid)[:2]
+    skew = float(stats.skew(resid))
+    kurt = float(stats.kurtosis(resid))
+
+    # --- Step 5: influential observations ---
+    cooks_d         = influence.cooks_distance[0]
+    n_influential   = (cooks_d > 4 / n).sum()
+    leverage        = influence.hat_matrix_diag
+    n_high_lev      = (leverage > 2 * (k + 1) / n).sum()
+
+    # --- Step 6: RESET test ---
+    reset   = diag.linear_reset(result, power=3, use_f=True)
+    reset_p = float(reset.pvalue)
+
+    # --- Print summary ---
+    alpha = 0.05
+    print(f"\n  ====  Diagnostic Report: {label}  ====")
+    print(f"  Formula : {formula}")
+    print(f"  n = {int(n)},  k = {int(k)},  R2 = {result.rsquared:.4f},  Adj R2 = {result.rsquared_adj:.4f}")
+    print()
+
+    checks = [
+        ("Residual spread (bin std ratio)",
+         spread_ratio < 2.0,
+         f"max/min std ratio across fitted-value bins = {spread_ratio:.2f}"),
+
+        ("Breusch-Pagan (heterosked.)",
+         bp_pval >= alpha,
+         f"stat={bp_stat:.3f}, p={bp_pval:.4f}"),
+
+        ("White test (heterosked.)",
+         wh_pval >= alpha,
+         f"stat={wh_stat:.3f}, p={wh_pval:.4f}"),
+
+        ("Jarque-Bera (normality)",
+         jb_pval >= alpha,
+         f"stat={jb_stat:.3f}, p={jb_pval:.4f}, skew={skew:.3f}, kurt={kurt:.3f}"),
+
+        ("Influential obs (Cook's D > 4/n)",
+         n_influential == 0,
+         f"{n_influential} obs flagged  ({n_high_lev} high-leverage obs)"),
+
+        ("RESET test (functional form)",
+         reset_p >= alpha,
+         f"F-stat={float(reset.statistic):.3f}, p={reset_p:.4f}"),
+    ]
+
+    for check_name, passed, detail in checks:
+        status = "PASS" if passed else "FAIL"
+        print(f"  [{status}]  {check_name}")
+        print(f"          {detail}")
+
+    n_fail = sum(1 for _, passed, _ in checks if not passed)
+    print()
+    print(f"  Summary: {len(checks) - n_fail}/{len(checks)} checks passed.")
+    if n_fail == 0:
+        print("  No assumption violations detected.")
+    else:
+        print(f"  {n_fail} check(s) failed -review the relevant sections above.")
+
+
+def demo_full_checklist() -> None:
+    """
+    Run the full diagnostic checklist on three models:
+      (a) Correctly specified log-level model on clean data  -> all pass
+      (b) Same model on heteroskedastic data                 -> het. fails
+      (c) Misspecified level-level model on clean data       -> RESET fails
+    """
+    df_clean = make_clean_data()
+    df_dirty = make_dirty_data()
+
+    run_full_diagnostic(
+        "log_wage ~ educ + exper",
+        df_clean,
+        "Correct model, clean data",
+    )
+
+    run_full_diagnostic(
+        "log_wage ~ educ + exper",
+        df_dirty,
+        "Correct model, heteroskedastic data",
+    )
+
+    run_full_diagnostic(
+        "wage ~ educ + exper",
+        df_clean,
+        "Misspecified level-level model, clean data",
+    )
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. What Are Residuals?")
+    demo_what_are_residuals()
+
+    section("2. Residual-vs-Fitted Plot (Numerical Summary)")
+    demo_residual_vs_fitted()
+
+    section("3. Testing for Heteroskedasticity (BP and White)")
+    demo_heteroskedasticity_tests()
+
+    section("4. Normality of Residuals (Q-Q and Jarque-Bera)")
+    demo_normality_tests()
+
+    section("5. Influential Observations (Leverage and Cook's D)")
+    demo_influential_observations()
+
+    section("6. Ramsey RESET Test (Functional Form)")
+    demo_reset_test()
+
+    section("7. Full Diagnostic Checklist")
+    demo_full_checklist()
+
+
+if __name__ == "__main__":
+    main()
