@@ -118,24 +118,25 @@ def demo_ols_se_bias() -> None:
 # In statsmodels: result.get_robustcov_results(cov_type='HC1')
 # or pass cov_type='HC1' directly to .fit().
 
-def compare_se_flavours(result_ols) -> None:
+def fit_with_cov(formula: str, data: pd.DataFrame, cov_type: str, **cov_kwds):
+    """Fit OLS with a given cov_type and return the result."""
+    return smf.ols(formula, data=data).fit(cov_type=cov_type, cov_kwds=cov_kwds if cov_kwds else {})
+
+
+def compare_se_flavours(df: pd.DataFrame, formula: str) -> None:
     """Print OLS, HC0, HC1, and HC3 SEs side by side for educ and exper."""
-    rows = {}
-    for cov in ["nonrobust", "HC0", "HC1", "HC3"]:
-        label = "OLS" if cov == "nonrobust" else cov
-        res   = result_ols.get_robustcov_results(cov_type=cov)
-        rows[label] = {
-            "educ_se":  res.bse["educ"],
-            "exper_se": res.bse["exper"],
-            "educ_t":   res.tvalues["educ"],
-            "educ_p":   res.pvalues["educ"],
-        }
+    variants = [
+        ("OLS", smf.ols(formula, data=df).fit()),
+        ("HC0", smf.ols(formula, data=df).fit(cov_type="HC0")),
+        ("HC1", smf.ols(formula, data=df).fit(cov_type="HC1")),
+        ("HC3", smf.ols(formula, data=df).fit(cov_type="HC3")),
+    ]
 
     print(f"\n  {'SE type':>8} | {'SE(educ)':>10} | {'SE(exper)':>10} | {'t(educ)':>9} | {'p(educ)':>9}")
     print(f"  {'-'*8}-+-{'-'*10}-+-{'-'*10}-+-{'-'*9}-+-{'-'*9}")
-    for label, r in rows.items():
-        print(f"  {label:>8} | {r['educ_se']:>10.5f} | {r['exper_se']:>10.5f} | "
-              f"{r['educ_t']:>9.3f} | {r['educ_p']:>9.4f}")
+    for label, res in variants:
+        print(f"  {label:>8} | {res.bse['educ']:>10.5f} | {res.bse['exper']:>10.5f} | "
+              f"{res.tvalues['educ']:>9.3f} | {res.pvalues['educ']:>9.4f}")
 
 
 def demo_hc_robust_se() -> None:
@@ -144,15 +145,16 @@ def demo_hc_robust_se() -> None:
     the SE changes when we switch to HC-robust corrections.
     Larger SEs under HC = OLS was understating uncertainty.
     """
-    df     = make_data()
-    result = smf.ols("log_wage ~ educ + exper", data=df).fit()
+    df      = make_data()
+    formula = "log_wage ~ educ + exper"
+    result  = smf.ols(formula, data=df).fit()
 
     print(f"\n  OLS point estimates (unchanged by SE correction):")
     print(f"    b_educ  = {result.params['educ']:.5f}")
     print(f"    b_exper = {result.params['exper']:.5f}")
     print(f"  R2 = {result.rsquared:.4f}")
 
-    compare_se_flavours(result)
+    compare_se_flavours(df, formula)
 
     print()
     print("  HC1 and HC3 SEs are larger than OLS -- correct direction.")
@@ -244,13 +246,14 @@ def demo_clustered_se() -> None:
     Compare the SE, t-statistic, and p-value for b_educ to show how
     much clustering matters once within-firm correlation is present.
     """
-    df = make_data()
+    df      = make_data()
+    formula = "log_wage ~ educ + exper"
 
-    fit_ols      = smf.ols("log_wage ~ educ + exper", data=df).fit()
-    fit_hc1      = fit_ols.get_robustcov_results(cov_type="HC1")
-    fit_cluster  = fit_ols.get_robustcov_results(
+    fit_ols     = smf.ols(formula, data=df).fit()
+    fit_hc1     = smf.ols(formula, data=df).fit(cov_type="HC1")
+    fit_cluster = smf.ols(formula, data=df).fit(
         cov_type="cluster",
-        groups=df["firm_id"],
+        cov_kwds={"groups": df["firm_id"]},
     )
 
     print(f"\n  b_educ = {fit_ols.params['educ']:.5f}  (same across all SE types)")
@@ -306,9 +309,12 @@ def demo_false_positive_rates(n_sims: int = 300) -> None:
 
         df = pd.DataFrame({"log_wage": log_wage, "educ": educ, "exper": exper, "firm_id": firm_id})
 
-        fit      = smf.ols("log_wage ~ educ + exper", data=df).fit()
-        fit_hc1  = fit.get_robustcov_results(cov_type="HC1")
-        fit_cl   = fit.get_robustcov_results(cov_type="cluster", groups=df["firm_id"])
+        formula = "log_wage ~ educ + exper"
+        fit     = smf.ols(formula, data=df).fit()
+        fit_hc1 = smf.ols(formula, data=df).fit(cov_type="HC1")
+        fit_cl  = smf.ols(formula, data=df).fit(
+            cov_type="cluster", cov_kwds={"groups": df["firm_id"]}
+        )
 
         reject_ols     += int(fit.pvalues["educ"]     < 0.05)
         reject_hc1     += int(fit_hc1.pvalues["educ"] < 0.05)
@@ -348,16 +354,21 @@ def demo_false_positive_rates(n_sims: int = 300) -> None:
 # This section shows the CGM formula numerically for a dataset that
 # has both firm and year dimensions.
 
+def get_cluster_vcov(formula: str, data: pd.DataFrame, groups: pd.Series) -> np.ndarray:
+    """Return the covariance matrix from a cluster-robust fit."""
+    res = smf.ols(formula, data=data).fit(
+        cov_type="cluster", cov_kwds={"groups": groups}
+    )
+    return res.cov_params().values
+
+
 def cgm_two_way_se(formula: str, data: pd.DataFrame,
                    group1: pd.Series, group2: pd.Series) -> pd.Series:
-    """
-    Cameron-Gelbach-Miller two-way clustered SE.
-    Returns a Series of standard errors indexed by parameter name.
-    """
-    fit  = smf.ols(formula, data=data).fit()
-    v1   = fit.get_robustcov_results(cov_type="cluster", groups=group1).cov_params()
-    v2   = fit.get_robustcov_results(cov_type="cluster", groups=group2).cov_params()
-    v12  = fit.get_robustcov_results(cov_type="cluster", groups=group1.astype(str) + "_" + group2.astype(str)).cov_params()
+    """Cameron-Gelbach-Miller two-way clustered SE."""
+    fit    = smf.ols(formula, data=data).fit()
+    v1     = get_cluster_vcov(formula, data, group1)
+    v2     = get_cluster_vcov(formula, data, group2)
+    v12    = get_cluster_vcov(formula, data, group1.astype(str) + "_" + group2.astype(str))
     v_2way = v1 + v2 - v12
     return pd.Series(np.sqrt(np.diag(v_2way)), index=fit.params.index)
 
@@ -376,9 +387,11 @@ def demo_two_way_clustering() -> None:
     year_shock       = df["year"].map({y: rng.normal(0, 0.15) for y in range(2010, 2020)})
     df["log_wage"]  += year_shock
 
-    se_firm     = smf.ols("log_wage ~ educ + exper", data=df).fit().get_robustcov_results(
-        cov_type="cluster", groups=df["firm_id"]).bse
-    se_two_way  = cgm_two_way_se("log_wage ~ educ + exper", df, df["firm_id"], df["year"])
+    formula    = "log_wage ~ educ + exper"
+    se_firm    = smf.ols(formula, data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["firm_id"]}
+    ).bse
+    se_two_way = cgm_two_way_se(formula, df, df["firm_id"], df["year"])
 
     print(f"\n  Two-way clustering: firms ({N_FIRMS}) x years (10)")
     print()
@@ -407,16 +420,17 @@ def demo_full_comparison() -> None:
     Fit one model and print a coefficient table under five SE types:
     OLS, HC0, HC1, HC3, and cluster-robust.
     """
-    df  = make_data()
-    fit = smf.ols("log_wage ~ educ + exper", data=df).fit()
+    df      = make_data()
+    formula = "log_wage ~ educ + exper"
 
     variants = {
-        "OLS":       fit.get_robustcov_results(cov_type="nonrobust"),
-        "HC0":       fit.get_robustcov_results(cov_type="HC0"),
-        "HC1":       fit.get_robustcov_results(cov_type="HC1"),
-        "HC3":       fit.get_robustcov_results(cov_type="HC3"),
-        "Clustered": fit.get_robustcov_results(cov_type="cluster", groups=df["firm_id"]),
+        "OLS":       smf.ols(formula, data=df).fit(),
+        "HC0":       smf.ols(formula, data=df).fit(cov_type="HC0"),
+        "HC1":       smf.ols(formula, data=df).fit(cov_type="HC1"),
+        "HC3":       smf.ols(formula, data=df).fit(cov_type="HC3"),
+        "Clustered": smf.ols(formula, data=df).fit(cov_type="cluster", cov_kwds={"groups": df["firm_id"]}),
     }
+    fit = variants["OLS"]
 
     for param in ["educ", "exper"]:
         print(f"\n  Coefficient: {param}  (point estimate = {fit.params[param]:.5f})")
@@ -471,3 +485,37 @@ def demo_decision_guide() -> None:
     print("  General rule: when in doubt, use cluster-robust SEs at the")
     print("  most natural level of treatment assignment (the cluster at")
     print("  which the policy or intervention varies across observations).")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Why OLS Standard Errors Can Be Wrong")
+    demo_ols_se_bias()
+
+    section("2. Heteroskedasticity-Consistent (HC) Robust Standard Errors")
+    demo_hc_robust_se()
+
+    section("3. Intra-Cluster Correlation (ICC)")
+    demo_icc()
+
+    section("4. Clustered Standard Errors")
+    demo_clustered_se()
+
+    section("5. False Positive Rates Under Different SE Types")
+    demo_false_positive_rates()
+
+    section("6. Two-Way Clustering")
+    demo_two_way_clustering()
+
+    section("7. Side-by-Side Comparison of All SE Types")
+    demo_full_comparison()
+
+    section("8. Practical Decision Guide")
+    demo_decision_guide()
+
+
+if __name__ == "__main__":
+    main()
