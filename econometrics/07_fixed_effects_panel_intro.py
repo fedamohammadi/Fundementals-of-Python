@@ -209,3 +209,107 @@ def demo_within_estimator() -> None:
     print("  changes: when a worker joins or leaves a union, does their wage")
     print("  change by the predicted amount?  Ability is constant across that")
     print("  comparison and drops out automatically.")
+
+
+# ==============================================================
+# 4. Two-Way Fixed Effects (Entity + Time)
+# ==============================================================
+# One-way FE removes entity unobservables.  If there are aggregate
+# shocks common to all workers in a given year (recession, new law),
+# they can still bias estimates when union membership also shifts
+# systematically with time.
+#
+# Two-way FE adds year dummies to absorb period-level shocks:
+#   y_it = b*union_it + alpha_i + gamma_t + eps_it
+#
+# Demeaning trick: subtract worker mean AND year mean, then add
+# the grand mean back.
+
+def demo_two_way_fe() -> None:
+    df = make_panel()
+
+    for var in ["log_wage", "union", "exper"]:
+        wm = df.groupby("worker_id")[var].transform("mean")
+        ym = df.groupby("year")[var].transform("mean")
+        gm = df[var].mean()
+        df[f"{var}_2w"] = df[var] - wm - ym + gm
+
+    df["log_wage_dm"] = demean(df, "log_wage", "worker_id")
+    df["union_dm"]    = demean(df, "union",    "worker_id")
+    df["exper_dm"]    = demean(df, "exper",    "worker_id")
+
+    fe_1 = smf.ols("log_wage_dm ~ union_dm + exper_dm - 1", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["worker_id"]}
+    )
+    fe_2 = smf.ols("log_wage_2w ~ union_2w + exper_2w - 1", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["worker_id"]}
+    )
+
+    print(f"\n  True: b_union = {TRUE_B_UNION:.3f}   b_exper = {TRUE_B_EXPER:.4f}")
+    print()
+    print(f"  {'Estimator':>18} | {'b_union':>8} | {'SE':>7} | {'b_exper':>9} | {'SE':>7}")
+    print(f"  {'-'*18}-+-{'-'*8}-+-{'-'*7}-+-{'-'*9}-+-{'-'*7}")
+
+    for label, res, uk, xk in [
+        ("One-way FE", fe_1, "union_dm", "exper_dm"),
+        ("Two-way FE", fe_2, "union_2w", "exper_2w"),
+    ]:
+        print(f"  {label:>18} | {res.params[uk]:>8.4f} | {res.bse[uk]:>7.4f} | "
+              f"{res.params[xk]:>9.4f} | {res.bse[xk]:>7.4f}")
+
+    print()
+    print("  Two-way FE absorbs year-specific aggregate shifts that could")
+    print("  confound comparisons if macro conditions correlate with unionisation.")
+    print("  It tightens identification to: within-worker AND within-year variation.")
+
+
+# ==============================================================
+# 5. Fixed Effects vs. First Differences
+# ==============================================================
+# Both FE and first differences (FD) remove entity fixed effects.
+# FD: regress (y_it - y_{i,t-1}) on (union_it - union_{i,t-1}).
+#
+# For T = 2: FE = FD exactly.
+# For T > 2:
+#   - FE is efficient when errors are serially uncorrelated.
+#   - FD is robust when errors follow a random walk.
+#
+# FD has a direct causal reading: a worker who just joined a union
+# -- did their wage go up by the predicted amount?
+
+def demo_first_differences() -> None:
+    df = make_panel().sort_values(["worker_id", "year"])
+
+    df["d_log_wage"] = df.groupby("worker_id")["log_wage"].diff()
+    df["d_union"]    = df.groupby("worker_id")["union"].diff()
+    df["d_exper"]    = df.groupby("worker_id")["exper"].diff()
+
+    df_fd = df.dropna(subset=["d_log_wage", "d_union", "d_exper"])
+
+    fd = smf.ols("d_log_wage ~ d_union + d_exper - 1", data=df_fd).fit(
+        cov_type="cluster", cov_kwds={"groups": df_fd["worker_id"]}
+    )
+
+    df["log_wage_dm"] = demean(df, "log_wage", "worker_id")
+    df["union_dm"]    = demean(df, "union",    "worker_id")
+    df["exper_dm"]    = demean(df, "exper",    "worker_id")
+    fe = smf.ols("log_wage_dm ~ union_dm + exper_dm - 1", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["worker_id"]}
+    )
+
+    print(f"\n  True: b_union = {TRUE_B_UNION:.3f}   b_exper = {TRUE_B_EXPER:.4f}")
+    print()
+    print(f"  {'Estimator':>15} | {'b_union':>8} | {'SE':>7} | {'b_exper':>9} | {'SE':>7}")
+    print(f"  {'-'*15}-+-{'-'*8}-+-{'-'*7}-+-{'-'*9}-+-{'-'*7}")
+
+    for label, res, uk, xk in [
+        ("FE (within)", fe, "union_dm", "exper_dm"),
+        ("FD",          fd, "d_union",  "d_exper"),
+    ]:
+        print(f"  {label:>15} | {res.params[uk]:>8.4f} | {res.bse[uk]:>7.4f} | "
+              f"{res.params[xk]:>9.4f} | {res.bse[xk]:>7.4f}")
+
+    print()
+    print("  With T = 6 and iid errors both should give similar answers.")
+    print("  FD uses only consecutive-year differences, so it discards some")
+    print("  information relative to FE; that shows up as slightly larger SEs.")
