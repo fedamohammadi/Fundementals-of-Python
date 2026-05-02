@@ -280,3 +280,153 @@ def demo_2sls() -> None:
     print("  2SLS with both instruments is more efficient (smaller SE) than")
     print("  using either instrument alone -- it exploits more exogenous variation.")
     print("  All IV estimates are close to the true 0.10, while OLS is ~50% higher.")
+
+
+# ==============================================================
+# 5. First-Stage Diagnostics: Testing for Weak Instruments
+# ==============================================================
+# A weak instrument has a small effect on X.  The consequences:
+#   - IV standard errors explode (IV is inconsistent in the limit).
+#   - In finite samples, IV is biased TOWARD OLS when instruments are weak.
+#   - Conventional t-tests become unreliable.
+#
+# Rule of thumb (Stock-Yogo 2005):
+#   First-stage F > 10  -->  instrument is probably strong enough.
+#   F < 10              -->  weak instrument; use LIML or weak-IV robust CIs.
+#
+# With multiple instruments: use the Cragg-Donald F or the Kleibergen-Paap
+# rank statistic (robust to non-iid errors) to test joint relevance.
+
+def first_stage_f(df: pd.DataFrame, x: str, instruments: list,
+                  controls: list = None) -> float:
+    """Return the F-statistic testing joint significance of instruments in the first stage."""
+    controls = controls or []
+    full_rhs  = " + ".join(instruments + controls)
+    restr_rhs = " + ".join(controls) if controls else "1"
+    full   = smf.ols(f"{x} ~ {full_rhs}",  data=df).fit()
+    restr  = smf.ols(f"{x} ~ {restr_rhs}", data=df).fit()
+    q  = len(instruments)
+    n  = len(df)
+    k  = full.df_model + 1
+    f  = ((restr.ssr - full.ssr) / q) / (full.ssr / (n - k))
+    return f
+
+
+def demo_weak_instruments() -> None:
+    """Show how first-stage F degrades as instrument strength weakens."""
+    rng = np.random.default_rng(99)
+    n   = N_OBS
+
+    print(f"\n  Simulated data: vary the strength of a single binary instrument")
+    print()
+    print(f"  {'Effect of Z on educ':>20} | {'First-stage F':>14} | {'IV b_educ':>10} | Bias vs {TRUE_B_EDUC:.2f}")
+    print(f"  {'-'*20}-+-{'-'*14}-+-{'-'*10}-+-{'-'*12}")
+
+    for delta_z in [2.0, 1.0, 0.5, 0.2, 0.05]:
+        ability = rng.normal(0, 1, n)
+        z       = rng.binomial(1, 0.5, n).astype(float)
+        educ    = np.clip(12 + 0.8 * ability + delta_z * z + rng.normal(0, 1.5, n), 8, 20).round()
+        eps     = rng.normal(0, 0.20, n)
+        lw      = 1.5 + TRUE_B_EDUC * educ + TRUE_B_ABLT * ability + eps
+        df2     = pd.DataFrame({"log_wage": lw, "educ": educ, "z": z})
+
+        f_stat = first_stage_f(df2, "educ", ["z"])
+        iv_res = fit_2sls(df2, "log_wage", "educ", instruments=["z"])
+
+        print(f"  {delta_z:>20.2f} | {f_stat:>14.1f} | {iv_res['b']:>10.4f} | {iv_res['b'] - TRUE_B_EDUC:+.4f}")
+
+    print()
+    print("  As delta_z shrinks, the first-stage F drops below 10 and the IV")
+    print("  estimate becomes unstable -- large variance AND bias toward OLS.")
+
+
+# ==============================================================
+# 6. The Hausman Endogeneity Test
+# ==============================================================
+# IV is more efficient than OLS when X is exogenous.  So the
+# question is: do we actually need IV?
+#
+# Durbin-Wu-Hausman test:
+#   H0: X is exogenous (OLS is consistent).
+#   H_A: X is endogenous (OLS is inconsistent; IV is needed).
+#
+# Implementation via the auxiliary regression (Davidson-MacKinnon):
+#   1. Regress X on Z to get residuals v̂.
+#   2. Include v̂ as an extra regressor in the Y equation.
+#   3. If b_v̂ is significant, X is endogenous.
+
+def demo_hausman_test() -> None:
+    df = make_iv_data()
+
+    # Stage 1 residuals
+    stage1 = smf.ols("educ ~ near_college + sibling_col", data=df).fit()
+    df["v_hat"] = stage1.resid
+
+    # Augmented regression
+    aug = smf.ols("log_wage ~ educ + v_hat", data=df).fit()
+
+    b_vhat = aug.params["v_hat"]
+    se_vhat = aug.bse["v_hat"]
+    p_vhat  = aug.pvalues["v_hat"]
+
+    print(f"\n  Durbin-Wu-Hausman endogeneity test:")
+    print(f"    H0: educ is exogenous (OLS consistent)")
+    print(f"    Coefficient on first-stage residual (v_hat): {b_vhat:.4f}")
+    print(f"    SE = {se_vhat:.4f}   t = {b_vhat / se_vhat:.2f}   p = {p_vhat:.4g}")
+    print()
+    if p_vhat < 0.05:
+        print("    Reject H0 -- educ is endogenous.  IV is needed.")
+    else:
+        print("    Fail to reject H0 -- endogeneity not detected.  OLS may be fine.")
+    print()
+    print("  The residual v_hat captures the part of educ driven by ability.")
+    print("  Its positive coefficient confirms that higher-ability workers get")
+    print("  more schooling AND earn more -- the exact OVB mechanism at work.")
+
+
+# ==============================================================
+# 7. Overidentification: the Sargan-Hansen J-test
+# ==============================================================
+# With more instruments than endogenous variables, the model is
+# overidentified.  The J-test (Sargan 1958, Hansen 1982) tests
+# whether the extra instruments are valid:
+#
+#   H0: all instruments satisfy the exclusion restriction.
+#   Statistic: J = n * R2 from regressing 2SLS residuals on all instruments.
+#   Under H0: J ~ chi2(# overidentifying restrictions = # Z - # endog X).
+#
+# Rejecting H0 means at least one instrument is invalid -- but the
+# test doesn't tell you which one.  Failure to reject doesn't prove
+# validity; the test has limited power in small samples.
+
+def demo_sargan_hansen() -> None:
+    df = make_iv_data()
+
+    # 2SLS with both instruments
+    stage1 = smf.ols("educ ~ near_college + sibling_col", data=df).fit()
+    df["educ_hat"] = stage1.fittedvalues
+
+    stage2 = smf.ols("log_wage ~ educ_hat", data=df).fit()
+
+    # 2SLS residuals: use actual X, not X_hat
+    b_iv = stage2.params["educ_hat"]
+    a_iv = stage2.params["Intercept"]
+    df["e_iv"] = df["log_wage"] - a_iv - b_iv * df["educ"]
+
+    # Sargan: J = n * R2 from regressing e_iv on all instruments
+    sargan = smf.ols("e_iv ~ near_college + sibling_col", data=df).fit()
+    j_stat = len(df) * sargan.rsquared
+    p_j    = 1 - stats.chi2.cdf(j_stat, df=1)   # df = 2 instruments - 1 endog = 1
+
+    print(f"\n  Sargan-Hansen J-test (overidentification test):")
+    print(f"    H0: both instruments satisfy the exclusion restriction")
+    print(f"    J = {j_stat:.3f}   chi2(1) p-value = {p_j:.4g}")
+    print()
+    if p_j < 0.05:
+        print("    Reject H0 -- at least one instrument appears invalid.")
+    else:
+        print("    Fail to reject H0 -- instruments are consistent with exclusion.")
+    print()
+    print("  Passing the J-test provides some reassurance, but it cannot rule")
+    print("  out the case where BOTH instruments are invalid in the same direction.")
+    print("  Economic reasoning for the exclusion restriction is always primary.")
