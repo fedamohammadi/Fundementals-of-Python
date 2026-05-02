@@ -69,7 +69,7 @@ def make_did_data(seed: int = 42,
         for year in years:
             post   = int(year >= treat_year[s])
             n      = N_PER_STATE
-            trend  = 0.0 if parallel_trends else (0.015 * (year - 2016) * treated)
+            trend  = 0.0 if parallel_trends else (0.04 * (year - 2016) * treated)
             eps    = rng.normal(0, 0.10, n)
             log_wage = (state_fe[s]
                         + 0.03 * (year - 2016)  # common time trend
@@ -154,7 +154,7 @@ def demo_parallel_trends_failure() -> None:
     print(f"  {'Dataset':>30} | {'DiD estimate':>13} | Bias vs. {TRUE_ATT:.3f}")
     print(f"  {'-'*30}-+-{'-'*13}-+-{'-'*15}")
 
-    for label, df in [("Parallel trends holds", df_ok), ("Trend violation (+0.015/yr)", df_bad)]:
+    for label, df in [("Parallel trends holds", df_ok), ("Trend violation (+0.04/yr)", df_bad)]:
         pre  = df[df["year"] < 2019]
         post = df[df["year"] >= 2019]
         did  = ((post[post["treated"] == 1]["log_wage"].mean()
@@ -187,10 +187,12 @@ def demo_parallel_trends_failure() -> None:
 
 def demo_did_regression() -> None:
     df = make_did_data()
-    df["treat_post"] = df["treated"] * df["post"]
+    # post_common is 1 for everyone in years >= 2019 (common time indicator)
+    df["post_common"] = (df["year"] >= 2019).astype(int)
+    df["treat_post"]  = df["treated"] * df["post_common"]
 
     # Bare-bones 2x2 form
-    m1 = smf.ols("log_wage ~ treated + post + treat_post", data=df).fit(
+    m1 = smf.ols("log_wage ~ treated + post_common + treat_post", data=df).fit(
         cov_type="cluster", cov_kwds={"groups": df["state"]}
     )
 
@@ -237,17 +239,22 @@ def demo_did_regression() -> None:
 #   2. Treatment effect appears at k=0, not earlier (no anticipation)
 #   3. Effect size and persistence post-treatment
 
+def _rk_name(k: int) -> str:
+    """Column name for relative-year k (avoids '-' in patsy formula)."""
+    return f"rkm{abs(k)}" if k < 0 else f"rkp{k}"
+
+
 def demo_event_study() -> None:
     df = make_did_data()
     df["rel_year"] = df["year"] - df["treat_year"]
     df.loc[df["treated"] == 0, "rel_year"] = -99   # control group never treated
 
-    # Dummies for k = -3, -2, -1 (pre), 0, 1, 2 (post); omit k = -1 (normalisation)
+    # Dummies for k = -3, -2 (pre), 0, 1, 2 (post); omit k = -1 as reference
     rel_years = [-3, -2, 0, 1, 2]
     for k in rel_years:
-        df[f"rk_{k}"] = ((df["rel_year"] == k) & (df["treated"] == 1)).astype(float)
+        df[_rk_name(k)] = ((df["rel_year"] == k) & (df["treated"] == 1)).astype(float)
 
-    rk_terms = " + ".join(f"rk_{k}" for k in rel_years)
+    rk_terms = " + ".join(_rk_name(k) for k in rel_years)
     formula  = f"log_wage ~ {rk_terms} + C(state) + C(year)"
 
     res = smf.ols(formula, data=df).fit(
@@ -260,9 +267,10 @@ def demo_event_study() -> None:
     print(f"  {'-'*18}-+-{'-'*12}-+-{'-'*7}-+-{'-'*7}-+-{'-'*10}")
 
     for k in rel_years:
-        b  = res.params.get(f"rk_{k}", 0)
-        se = res.bse.get(f"rk_{k}", 0)
-        p  = res.pvalues.get(f"rk_{k}", 1)
+        col = _rk_name(k)
+        b   = res.params.get(col, 0)
+        se  = res.bse.get(col, 0)
+        p   = res.pvalues.get(col, 1)
         period = "pre" if k < 0 else "post"
         print(f"  {k:>18} | {b:>12.4f} | {se:>7.4f} | {p:>7.4f} | {period}")
 
@@ -318,3 +326,120 @@ def demo_staggered_did() -> None:
     print("  units.  When effects are homogeneous (as here), bias is mild;")
     print("  it can be severe with heterogeneous effects.  Callaway-Sant'Anna")
     print("  or stacked regressions are preferred in staggered settings.")
+
+
+# ==============================================================
+# 6. Parallel Trends Placebo Test
+# ==============================================================
+# The key assumption in DiD -- that treated and control groups
+# would have trended the same without treatment -- is not directly
+# testable for the post period.  But we CAN test it for pre-periods
+# by pretending an earlier year was the "treatment year" and
+# running the DiD on pre-treatment data only.
+#
+# If the placebo DiD is significantly different from zero, parallel
+# trends was already broken before the real treatment arrived --
+# a red flag for the whole design.
+
+def demo_placebo_test() -> None:
+    df     = make_did_data(parallel_trends=True)
+    df_bad = make_did_data(parallel_trends=False)
+
+    print(f"\n  Placebo test: pretend treatment happened in 2017 (true year: 2019)")
+    print(f"  Using pre-treatment data only (2016 and 2017).")
+    print()
+    print(f"  {'Dataset':>30} | {'Placebo DiD':>12} | {'SE':>7} | {'p':>7} | Verdict")
+    print(f"  {'-'*30}-+-{'-'*12}-+-{'-'*7}-+-{'-'*7}-+-{'-'*20}")
+
+    for label, df_ in [("Parallel trends holds", df), ("Trend violation (+0.04/yr)", df_bad)]:
+        pre_only = df_[df_["year"] <= 2017].copy()
+        pre_only["placebo_post"]    = (pre_only["year"] == 2017).astype(int)
+        pre_only["treat_placebo"]   = pre_only["treated"] * pre_only["placebo_post"]
+
+        res = smf.ols(
+            "log_wage ~ treat_placebo + C(state) + C(year)",
+            data=pre_only
+        ).fit(cov_type="cluster", cov_kwds={"groups": pre_only["state"]})
+
+        b = res.params["treat_placebo"]
+        se = res.bse["treat_placebo"]
+        p  = res.pvalues["treat_placebo"]
+        verdict = "FAIL -- pre-trend detected" if p < 0.10 else "pass"
+        print(f"  {label:>30} | {b:>12.4f} | {se:>7.4f} | {p:>7.4f} | {verdict}")
+
+    print()
+    print("  When trends genuinely differ pre-treatment, the placebo DiD is")
+    print("  large and significant -- giving a way to falsify your design")
+    print("  before you look at post-treatment outcomes.")
+
+
+# ==============================================================
+# 7. Practical Guide
+# ==============================================================
+# A checklist for building a credible DiD design.
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("Is there a clear pre-treatment period for both groups?",
+         "No  -> DiD is not applicable; consider synthetic control or RD.",
+         "Yes -> continue."),
+
+        ("Does treatment happen at the same time for all treated units?",
+         "Yes -> standard 2x2 or TWFE DiD.",
+         "No (staggered) -> use Callaway-Sant'Anna or stacked regressions instead of TWFE."),
+
+        ("Do pre-treatment trends look parallel (visual + placebo test)?",
+         "Yes -> DiD assumption is supported (not proven).",
+         "No  -> DiD is not valid.  Consider matching or synthetic control."),
+
+        ("Are the treated and control groups similar on observables?",
+         "Yes -> basic DiD is fine.",
+         "No  -> add controls or use a doubly-robust DiD estimator."),
+
+        ("Cluster level for standard errors?",
+         "Cluster at the level where treatment varies (usually state/city/firm).",
+         "Larger clusters = fewer clusters = use wild cluster bootstrap if <30 groups."),
+    ]
+
+    print()
+    for i, (question, opt_a, opt_b) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  The hardest part of DiD is finding a good control group --")
+    print("  units that would have followed the treated group's counterfactual")
+    print("  path absent the intervention.  More controls is not always better;")
+    print("  similar controls are what matter.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. The 2x2 DiD Estimator")
+    demo_2x2_did()
+
+    section("2. The Parallel Trends Assumption")
+    demo_parallel_trends_failure()
+
+    section("3. DiD with Regression and Controls")
+    demo_did_regression()
+
+    section("4. Event Study: Dynamic Treatment Effects")
+    demo_event_study()
+
+    section("5. Staggered Adoption and TWFE Problems")
+    demo_staggered_did()
+
+    section("6. Parallel Trends Placebo Test")
+    demo_placebo_test()
+
+    section("7. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
