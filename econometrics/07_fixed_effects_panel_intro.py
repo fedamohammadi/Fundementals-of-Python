@@ -453,3 +453,37 @@ def demo_practical_guide() -> None:
     print("  Rule of thumb: use entity FE whenever you suspect unobserved unit-level")
     print("  characteristics are correlated with your treatment.  Add year FEs if")
     print("  macro trends could confound the within-unit comparison.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Panel Data Structure")
+    demo_panel_structure()
+
+    section("2. Pooled OLS and Omitted Variable Bias")
+    demo_pooled_ols_bias()
+
+    section("3. The Within Estimator (Entity Fixed Effects)")
+    demo_within_estimator()
+
+    section("4. Two-Way Fixed Effects (Entity + Time)")
+    demo_two_way_fe()
+
+    section("5. Fixed Effects vs. First Differences")
+    demo_first_differences()
+
+    section("6. Testing for Fixed Effects")
+    demo_fe_tests()
+
+    section("7. What Fixed Effects Cannot Fix")
+    demo_fe_limitations()
+
+    section("8. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
