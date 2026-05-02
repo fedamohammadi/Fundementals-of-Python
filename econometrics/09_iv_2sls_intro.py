@@ -430,3 +430,81 @@ def demo_sargan_hansen() -> None:
     print("  Passing the J-test provides some reassurance, but it cannot rule")
     print("  out the case where BOTH instruments are invalid in the same direction.")
     print("  Economic reasoning for the exclusion restriction is always primary.")
+
+
+# ==============================================================
+# 8. Practical Guide
+# ==============================================================
+# A checklist for building a credible IV design.
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("Is your treatment variable plausibly endogenous?",
+         "No  -> use OLS; the Hausman test can help confirm this.",
+         "Yes -> IV or another identification strategy is needed."),
+
+        ("Do you have a candidate instrument?",
+         "No  -> IV is not an option here; consider RD, DiD, or matching.",
+         "Yes -> check relevance (first-stage F > 10) before proceeding."),
+
+        ("Is the first-stage F > 10?",
+         "Yes -> proceed to 2SLS.",
+         "No  -> weak instrument.  Consider LIML or Anderson-Rubin CIs."),
+
+        ("Can you defend the exclusion restriction?",
+         "Yes -> state the economic argument clearly in your paper.",
+         "No  -> the instrument is invalid; IV is worse than OLS."),
+
+        ("Do you have more instruments than endogenous regressors?",
+         "No (just-identified) -> J-test not applicable; exclusion untestable.",
+         "Yes (overidentified) -> run the Sargan-Hansen J-test as a sanity check."),
+
+        ("Are IV estimates sensitive to the choice of instrument?",
+         "No  -> estimates are robust; report main spec.",
+         "Yes -> investigate why; different IVs identify different LATEs."),
+    ]
+
+    print()
+    for i, (question, opt_a, opt_b) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  The hardest part of IV is finding instruments that are both")
+    print("  strong (relevant) and credibly excludable.  A weak but valid")
+    print("  instrument is usable; a strong but invalid one is not.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. The Endogeneity Problem")
+    demo_endogeneity_problem()
+
+    section("2. Instrumental Variable Conditions")
+    demo_iv_conditions()
+
+    section("3. The Wald Estimator")
+    demo_wald_estimator()
+
+    section("4. Two-Stage Least Squares (2SLS)")
+    demo_2sls()
+
+    section("5. First-Stage Diagnostics: Weak Instruments")
+    demo_weak_instruments()
+
+    section("6. The Hausman Endogeneity Test")
+    demo_hausman_test()
+
+    section("7. Overidentification: the Sargan-Hansen J-test")
+    demo_sargan_hansen()
+
+    section("8. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
