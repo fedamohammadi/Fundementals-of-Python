@@ -313,3 +313,143 @@ def demo_first_differences() -> None:
     print("  With T = 6 and iid errors both should give similar answers.")
     print("  FD uses only consecutive-year differences, so it discards some")
     print("  information relative to FE; that shows up as slightly larger SEs.")
+
+
+# ==============================================================
+# 6. Testing for Fixed Effects: F-test and Mundlak-Hausman
+# ==============================================================
+# F-test: compare pooled OLS (restricted) to LSDV (unrestricted).
+#   H0: all entity intercepts equal zero.
+#   If F is large and p < 0.05, entity effects matter and FE is warranted.
+#
+# Mundlak-Hausman: add each time-varying regressor's entity group mean
+# to the pooled regression.  If the means are jointly significant,
+# the entity effects are correlated with X -- OLS is inconsistent
+# and FE is needed.  Cleaner than a classical Hausman test because
+# it produces a standard F-statistic.
+
+def demo_fe_tests() -> None:
+    df = make_panel()
+
+    pooled = smf.ols("log_wage ~ union + exper", data=df).fit()
+    lsdv   = smf.ols("log_wage ~ union + exper + C(worker_id)", data=df).fit()
+
+    q      = N_WORKERS - 1
+    df_e   = lsdv.df_resid
+    f_stat = ((pooled.ssr - lsdv.ssr) / q) / (lsdv.ssr / df_e)
+    p_val  = stats.f.sf(f_stat, q, df_e)
+
+    print(f"\n  F-test for {N_WORKERS} entity fixed effects:")
+    print(f"    F({q}, {int(df_e)}) = {f_stat:.1f}   p = {p_val:.2e}")
+    print(f"    {'Reject H0 -- entity FEs are significant.' if p_val < 0.05 else 'Fail to reject.'}")
+    print()
+
+    # Mundlak device
+    df["union_bar"] = df.groupby("worker_id")["union"].transform("mean")
+    df["exper_bar"] = df.groupby("worker_id")["exper"].transform("mean")
+
+    mundlak = smf.ols("log_wage ~ union + exper + union_bar + exper_bar", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["worker_id"]}
+    )
+    f_m = mundlak.f_test(["union_bar = 0", "exper_bar = 0"])
+
+    print(f"  Mundlak-Hausman test (H0: entity effects uncorrelated with X):")
+    print(f"    F = {float(f_m.fvalue):.2f}   p = {float(f_m.pvalue):.4g}")
+    print(f"    {'Reject H0 -- use FE.' if float(f_m.pvalue) < 0.05 else 'Fail to reject -- RE may be consistent.'}")
+    print()
+    print("  union_bar measures each worker's average union rate.  Its significance")
+    print("  reflects the negative selection of low-ability workers into unions --")
+    print("  the same ability correlation that was biasing pooled OLS.")
+
+
+# ==============================================================
+# 7. What Fixed Effects Cannot Fix
+# ==============================================================
+# FE removes time-invariant unobservables, but it has clear limits:
+#
+# 1. Time-invariant variables (gender, education, race) are collinear
+#    with entity dummies and cannot be estimated.
+#
+# 2. Measurement error is amplified.  Demeaning removes signal but
+#    not noise, worsening the signal-to-noise ratio and attenuation
+#    bias relative to pooled OLS.
+#
+# 3. If there is no within-unit variation in the treatment -- every
+#    unit is always treated or never treated -- FE has nothing to use.
+
+def demo_fe_limitations() -> None:
+    df = make_panel()
+
+    # (a) time-invariant variable educ dropped
+    lsdv = smf.ols("log_wage ~ union + exper + educ + C(worker_id)", data=df).fit()
+    print("\n  (a) Time-invariant variable 'educ':")
+    if "educ" not in lsdv.params or abs(lsdv.params.get("educ", 0)) < 1e-10:
+        print("    b_educ: dropped (collinear with worker dummies)")
+    else:
+        print(f"    b_educ = {lsdv.params['educ']:.4f}  (unreliable -- near-collinear)")
+    print("    FE absorbs all stable worker characteristics.  To estimate a")
+    print("    gender or education gap you need cross-sectional variation.")
+
+    # (b) measurement error in union
+    rng = np.random.default_rng(17)
+    print()
+    print(f"  (b) Measurement error in union status (true b_union = {TRUE_B_UNION:.3f}):")
+    print(f"  {'Noise SD':>9} | {'Pooled OLS':>11} | {'FE (demean)':>12}")
+    print(f"  {'-'*9}-+-{'-'*11}-+-{'-'*12}")
+
+    for noise_sd in [0.0, 0.1, 0.2, 0.4]:
+        df2 = df.copy()
+        df2["union_m"] = df2["union"] + rng.normal(0, noise_sd, len(df2))
+
+        b_pool = smf.ols("log_wage ~ union_m + exper", data=df2).fit().params["union_m"]
+
+        df2["lw_dm"] = demean(df2, "log_wage", "worker_id")
+        df2["un_dm"] = demean(df2, "union_m",  "worker_id")
+        df2["ex_dm"] = demean(df2, "exper",    "worker_id")
+        b_fe = smf.ols("lw_dm ~ un_dm + ex_dm - 1", data=df2).fit().params["un_dm"]
+
+        print(f"  {noise_sd:>9.2f} | {b_pool:>11.4f} | {b_fe:>12.4f}")
+
+    print()
+    print("  Demeaning kills the within-worker signal while noise survives,")
+    print("  so FE attenuation worsens faster than pooled OLS as error grows.")
+
+
+# ==============================================================
+# 8. Practical Guide
+# ==============================================================
+# A decision checklist for panel data estimation.
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("Is there unobserved entity heterogeneity correlated with the treatment?",
+         "No  -> pooled OLS with clustered SEs (cluster at the entity level).",
+         "Yes -> entity FE or FD needed."),
+
+        ("Do you need to estimate effects of time-invariant variables?",
+         "No  -> FE works.",
+         "Yes -> FE cannot identify them; consider IV or RE (if exogeneity holds)."),
+
+        ("Are there aggregate time-period shocks?",
+         "No  -> one-way entity FE.",
+         "Yes -> two-way FE (entity + year dummies)."),
+
+        ("Is T = 2 or are errors likely nonstationary?",
+         "T > 2 and errors roughly iid -> prefer FE (more efficient).",
+         "T = 2, or errors have a unit root -> FD is equally valid."),
+
+        ("Are results stable across FE and FD?",
+         "Yes -> report main spec and note robustness.",
+         "No  -> investigate; different variation sources tell different stories."),
+    ]
+
+    print()
+    for i, (question, no_branch, yes_branch) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {no_branch}")
+        print(f"    {yes_branch}")
+        print()
+
+    print("  Rule of thumb: use entity FE whenever you suspect unobserved unit-level")
+    print("  characteristics are correlated with your treatment.  Add year FEs if")
+    print("  macro trends could confound the within-unit comparison.")
