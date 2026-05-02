@@ -167,3 +167,154 @@ def demo_parallel_trends_failure() -> None:
     print("  A pre-existing upward trend in the treated group inflates the DiD")
     print("  estimate: the extra post-treatment wage growth is partially a")
     print("  continuation of the pre-trend, not the treatment effect.")
+
+
+# ==============================================================
+# 3. DiD with Regression and Controls
+# ==============================================================
+# The regression form of DiD is:
+#   y_st = a + b1*treated_s + b2*post_t + b3*(treated_s * post_t) + eps_st
+#
+# b3 is the DiD estimator (= ATT under parallel trends).
+# This generalises the 2x2 table to:
+#   - Multiple pre and post periods
+#   - Adding state and year fixed effects (absorbs b1 and b2)
+#   - Including worker-level controls
+#   - Proper standard errors clustered at the state level
+#
+# With state and year FEs the estimating equation becomes:
+#   y_ist = alpha_s + gamma_t + b*(treated_s * post_st) + X_ist'c + eps_ist
+
+def demo_did_regression() -> None:
+    df = make_did_data()
+    df["treat_post"] = df["treated"] * df["post"]
+
+    # Bare-bones 2x2 form
+    m1 = smf.ols("log_wage ~ treated + post + treat_post", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["state"]}
+    )
+
+    # With state and year fixed effects (preferred)
+    m2 = smf.ols("log_wage ~ treat_post + C(state) + C(year)", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["state"]}
+    )
+
+    print(f"\n  True ATT = {TRUE_ATT:.3f}")
+    print()
+    print(f"  {'Specification':>32} | {'b_treat_post':>13} | {'SE':>7} | {'p':>7}")
+    print(f"  {'-'*32}-+-{'-'*13}-+-{'-'*7}-+-{'-'*7}")
+
+    for label, res in [
+        ("No FEs (treated + post + treat_post)", m1),
+        ("State + year FEs",                     m2),
+    ]:
+        b  = res.params["treat_post"]
+        se = res.bse["treat_post"]
+        p  = res.pvalues["treat_post"]
+        print(f"  {label:>32} | {b:>13.4f} | {se:>7.4f} | {p:>7.4f}")
+
+    print()
+    print("  Adding state and year FEs absorbs persistent state-level differences")
+    print("  and common year shocks, making the treatment effect estimator more")
+    print("  credible.  Cluster SEs at the state level -- the treatment assignment")
+    print("  varies at the state level, not the worker level.")
+
+
+# ==============================================================
+# 4. Event Study: Dynamic Treatment Effects
+# ==============================================================
+# A static DiD collapses all post-treatment periods into a single
+# "post" indicator.  An event study instead estimates a separate
+# treatment effect coefficient for each relative year:
+#
+#   y_ist = alpha_s + gamma_t + sum_k b_k * 1(t - t_s* = k) + eps_ist
+#
+# where t_s* is state s's treatment year and k indexes time since
+# treatment (negative k = pre-treatment, k=0 = treatment year).
+#
+# Three things to check in an event study plot:
+#   1. Pre-period coefficients near zero (parallel pre-trends)
+#   2. Treatment effect appears at k=0, not earlier (no anticipation)
+#   3. Effect size and persistence post-treatment
+
+def demo_event_study() -> None:
+    df = make_did_data()
+    df["rel_year"] = df["year"] - df["treat_year"]
+    df.loc[df["treated"] == 0, "rel_year"] = -99   # control group never treated
+
+    # Dummies for k = -3, -2, -1 (pre), 0, 1, 2 (post); omit k = -1 (normalisation)
+    rel_years = [-3, -2, 0, 1, 2]
+    for k in rel_years:
+        df[f"rk_{k}"] = ((df["rel_year"] == k) & (df["treated"] == 1)).astype(float)
+
+    rk_terms = " + ".join(f"rk_{k}" for k in rel_years)
+    formula  = f"log_wage ~ {rk_terms} + C(state) + C(year)"
+
+    res = smf.ols(formula, data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["state"]}
+    )
+
+    print(f"\n  True ATT = {TRUE_ATT:.3f}  (same each post-period by construction)")
+    print()
+    print(f"  {'Relative year k':>18} | {'Coefficient':>12} | {'SE':>7} | {'p':>7} | Period")
+    print(f"  {'-'*18}-+-{'-'*12}-+-{'-'*7}-+-{'-'*7}-+-{'-'*10}")
+
+    for k in rel_years:
+        b  = res.params.get(f"rk_{k}", 0)
+        se = res.bse.get(f"rk_{k}", 0)
+        p  = res.pvalues.get(f"rk_{k}", 1)
+        period = "pre" if k < 0 else "post"
+        print(f"  {k:>18} | {b:>12.4f} | {se:>7.4f} | {p:>7.4f} | {period}")
+
+    print()
+    print("  (k = -1 is the omitted reference year.  Pre-period coefficients")
+    print("  should be close to zero if parallel trends holds.  Post-period")
+    print("  coefficients estimate the treatment effect in each year.)")
+
+
+# ==============================================================
+# 5. Staggered Adoption and TWFE Problems
+# ==============================================================
+# When units adopt treatment at different times (staggered rollout),
+# the standard two-way FE (TWFE) DiD has a subtle flaw.
+#
+# TWFE uses already-treated units as implicit controls for later-
+# treated units.  If treatment effects are heterogeneous (different
+# units have different ATTs), the TWFE estimator can be a
+# weighted average with NEGATIVE weights on some groups -- it can
+# even have the wrong sign.
+#
+# Here we show the problem by simulating staggered adoption and
+# comparing TWFE to the manual 2x2 estimate for early vs. late
+# adopters separately.
+
+def demo_staggered_did() -> None:
+    df = make_did_data(staggered=True)
+    df["treat_post"] = df["treated"] * df["post"]
+
+    # TWFE estimate
+    twfe = smf.ols("log_wage ~ treat_post + C(state) + C(year)", data=df).fit(
+        cov_type="cluster", cov_kwds={"groups": df["state"]}
+    )
+
+    # Manual 2x2 for early adopters (treated in 2018) vs. control only
+    early = df[(df["treat_year"] == 2018) | (df["treated"] == 0)].copy()
+    early["treat_post_e"] = early["treated"] * (early["year"] >= 2018).astype(int)
+    twfe_e = smf.ols("log_wage ~ treat_post_e + C(state) + C(year)", data=early).fit(
+        cov_type="cluster", cov_kwds={"groups": early["state"]}
+    )
+
+    print(f"\n  True ATT = {TRUE_ATT:.3f}  (same for all states by construction)")
+    print()
+    print(f"  {'Estimator':>35} | {'Estimate':>9} | Bias")
+    print(f"  {'-'*35}-+-{'-'*9}-+-{'-'*15}")
+    print(f"  {'TWFE (staggered, all treated)':>35} | {twfe.params['treat_post']:>9.4f} | "
+          f"{twfe.params['treat_post'] - TRUE_ATT:+.4f}")
+    print(f"  {'2x2 early adopters vs. control':>35} | {twfe_e.params['treat_post_e']:>9.4f} | "
+          f"{twfe_e.params['treat_post_e'] - TRUE_ATT:+.4f}")
+    print()
+    print("  TWFE can differ from the true ATT in staggered designs because")
+    print("  it implicitly compares later-treated units against already-treated")
+    print("  units.  When effects are homogeneous (as here), bias is mild;")
+    print("  it can be severe with heterogeneous effects.  Callaway-Sant'Anna")
+    print("  or stacked regressions are preferred in staggered settings.")
