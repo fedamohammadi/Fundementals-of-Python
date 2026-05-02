@@ -154,3 +154,129 @@ def demo_iv_conditions() -> None:
     print()
     print("  A significant reduced form confirms that Z shifts Y via X --")
     print("  necessary but not sufficient for validity (exclusion still needed).")
+
+
+# ==============================================================
+# 3. The Wald Estimator
+# ==============================================================
+# With a single binary instrument Z, the IV estimator simplifies to:
+#
+#   b_IV = (ȳ_{Z=1} - ȳ_{Z=0}) / (x̄_{Z=1} - x̄_{Z=0})
+#        = Reduced Form / First Stage
+#
+# This ratio says: for every extra year of education caused by Z,
+# how much does log_wage change?  The denominator is the "first
+# stage" effect and the numerator is the "reduced form" effect.
+#
+# The Wald estimator is the Local Average Treatment Effect (LATE):
+# it identifies the return to education only for "compliers" --
+# workers whose education changed because of the instrument.
+
+def wald_estimator(df: pd.DataFrame, y: str, x: str, z: str) -> float:
+    y1, y0 = df.loc[df[z] == 1, y].mean(), df.loc[df[z] == 0, y].mean()
+    x1, x0 = df.loc[df[z] == 1, x].mean(), df.loc[df[z] == 0, x].mean()
+    return (y1 - y0) / (x1 - x0)
+
+
+def demo_wald_estimator() -> None:
+    df = make_iv_data()
+
+    print(f"\n  True b_educ = {TRUE_B_EDUC:.3f}")
+    print()
+    print(f"  {'Instrument':>14} | {'Reduced Form':>13} | {'First Stage':>12} | Wald IV")
+    print(f"  {'-'*14}-+-{'-'*13}-+-{'-'*12}-+-{'-'*9}")
+
+    for z in ["near_college", "sibling_col"]:
+        rf  = df.loc[df[z] == 1, "log_wage"].mean() - df.loc[df[z] == 0, "log_wage"].mean()
+        fs  = df.loc[df[z] == 1, "educ"].mean()     - df.loc[df[z] == 0, "educ"].mean()
+        w   = wald_estimator(df, "log_wage", "educ", z)
+        print(f"  {z:>14} | {rf:>13.4f} | {fs:>12.4f} | {w:.4f}")
+
+    print()
+    naive_b = smf.ols("log_wage ~ educ", data=df).fit().params["educ"]
+    print(f"  Naive OLS b_educ = {naive_b:.4f}  (for comparison)")
+    print()
+    print("  Wald IV is close to the true 0.10, while OLS is ~50% higher.")
+    print("  Each instrument gives a slightly different estimate because each")
+    print("  identifies the LATE for its own subpopulation of compliers.")
+
+
+# ==============================================================
+# 4. Two-Stage Least Squares (2SLS)
+# ==============================================================
+# 2SLS is the standard IV estimator with one or more instruments:
+#
+#   Stage 1: regress X on Z (and any included controls) to get X̂.
+#   Stage 2: regress Y on X̂ (and controls) to get b_IV.
+#
+# The key insight: X̂ contains only the part of X that's driven by
+# Z -- by construction uncorrelated with ability in the error.
+#
+# With multiple instruments, 2SLS is more efficient than using each
+# instrument separately (it combines their variation optimally).
+#
+# In statsmodels: use IV2SLS from linearmodels or implement manually.
+# Here we implement it directly to show what happens under the hood.
+
+def fit_2sls(df: pd.DataFrame, y: str, x_endog: str,
+             instruments: list, controls: list = None) -> dict:
+    """
+    Manual 2SLS: returns a dict with b, se, t, p for each variable.
+    controls are included in both stages (exogenous regressors).
+    """
+    controls = controls or []
+
+    # Stage 1
+    rhs1 = " + ".join(instruments + controls)
+    stage1 = smf.ols(f"{x_endog} ~ {rhs1}", data=df).fit()
+    df = df.copy()
+    df[f"{x_endog}_hat"] = stage1.fittedvalues
+
+    # Stage 2
+    rhs2 = f"{x_endog}_hat" + (" + " + " + ".join(controls) if controls else "")
+    stage2 = smf.ols(f"{y} ~ {rhs2}", data=df).fit()
+
+    # Correct the residuals: stage 2 uses X_hat, so residuals use X (not X_hat)
+    n  = len(df)
+    k  = stage2.df_model + 1
+    e  = df[y].values - stage2.params["Intercept"] - stage2.params[f"{x_endog}_hat"] * df[x_endog].values
+    s2 = (e @ e) / (n - k)
+    X2 = sm.add_constant(df[f"{x_endog}_hat"].values)
+    vcov = s2 * np.linalg.inv(X2.T @ X2)
+    se   = np.sqrt(np.diag(vcov))
+
+    b_iv = stage2.params[f"{x_endog}_hat"]
+    se_iv = se[1]
+    t_iv  = b_iv / se_iv
+    p_iv  = 2 * (1 - stats.t.cdf(abs(t_iv), df=n - k))
+
+    return {"b": b_iv, "se": se_iv, "t": t_iv, "p": p_iv,
+            "stage1_f": stage1.fvalue, "stage1_r2": stage1.rsquared}
+
+
+def demo_2sls() -> None:
+    df = make_iv_data()
+
+    ols = smf.ols("log_wage ~ educ", data=df).fit()
+
+    iv1 = fit_2sls(df, "log_wage", "educ", instruments=["near_college"])
+    iv2 = fit_2sls(df, "log_wage", "educ", instruments=["sibling_col"])
+    iv_both = fit_2sls(df, "log_wage", "educ",
+                       instruments=["near_college", "sibling_col"])
+
+    print(f"\n  True b_educ = {TRUE_B_EDUC:.3f}  (N = {N_OBS})")
+    print()
+    print(f"  {'Estimator':>22} | {'b_educ':>8} | {'SE':>7} | {'p':>8} | First-stage F")
+    print(f"  {'-'*22}-+-{'-'*8}-+-{'-'*7}-+-{'-'*8}-+-{'-'*14}")
+
+    print(f"  {'OLS':>22} | {ols.params['educ']:>8.4f} | {ols.bse['educ']:>7.4f} | "
+          f"{ols.pvalues['educ']:>8.4f} | n/a")
+    for label, res in [("IV (near_college)", iv1), ("IV (sibling_col)", iv2),
+                       ("2SLS (both Z)",    iv_both)]:
+        print(f"  {label:>22} | {res['b']:>8.4f} | {res['se']:>7.4f} | "
+              f"{res['p']:>8.4f} | {res['stage1_f']:>14.1f}")
+
+    print()
+    print("  2SLS with both instruments is more efficient (smaller SE) than")
+    print("  using either instrument alone -- it exploits more exogenous variation.")
+    print("  All IV estimates are close to the true 0.10, while OLS is ~50% higher.")
