@@ -176,3 +176,148 @@ def demo_bias_variance() -> None:
     print("  Train MSE falls with every added degree (more flexibility).")
     print("  Test MSE is minimized near the true degree; higher degrees")
     print("  memorize noise and generalize poorly to new data.")
+
+
+# ==============================================================
+# 3. Cross-Validation
+# ==============================================================
+# Cross-validation (CV) estimates out-of-sample error without
+# holding out a separate test set.
+#
+# k-fold CV:
+#   1. Partition the data into k equally sized folds.
+#   2. For each fold i: train on the other k-1 folds, predict fold i.
+#   3. CV MSE = average of the k held-out MSEs.
+#
+# CV selects the model that generalizes best, not the one with the
+# lowest training error.  This is the key tool for prediction tasks.
+#
+# Typical values: k = 5 or 10.  Larger k = less bias, more variance
+# in the CV estimate; k = n is leave-one-out CV (expensive but stable).
+
+def kfold_mse(df: pd.DataFrame, degree: int, k: int = 5, seed: int = 0) -> float:
+    """Return mean k-fold CV MSE for a polynomial regression of given degree."""
+    n   = len(df)
+    idx = np.random.default_rng(seed).permutation(n)
+    folds = np.array_split(idx, k)
+    mses  = []
+    for i in range(k):
+        val_idx   = folds[i]
+        train_idx = np.concatenate([folds[j] for j in range(k) if j != i])
+        train = df.iloc[train_idx].reset_index(drop=True)
+        val   = df.iloc[val_idx].reset_index(drop=True)
+        _, mse = poly_mse(train, val, degree)
+        mses.append(mse)
+    return float(np.mean(mses))
+
+
+def demo_cross_validation() -> None:
+    df = make_poly_data(n=N_BV)
+
+    print(f"\n  5-fold CV on polynomial regression  (true degree = {TRUE_DEG}, N = {N_BV})")
+    print()
+    print(f"  {'Degree':>7} | {'CV MSE':>10} | Selected?")
+    print(f"  {'-'*7}-+-{'-'*10}-+-{'-'*10}")
+
+    cv_mses = {}
+    for deg in range(1, 9):
+        cv_mses[deg] = kfold_mse(df, degree=deg)
+
+    best_deg = min(cv_mses, key=cv_mses.get)
+    for deg, cv_mse in cv_mses.items():
+        flag = "<-- best" if deg == best_deg else ""
+        print(f"  {deg:>7} | {cv_mse:>10.4f} | {flag}")
+
+    print()
+    print(f"  CV selected degree {best_deg} (true degree is {TRUE_DEG}).")
+    print("  CV penalizes complexity through held-out error, not training error.")
+    print("  Training MSE would always pick the highest degree -- it never stops.")
+    print()
+    print("  CV is the standard tool for selecting hyperparameters in prediction.")
+    print("  For causal models, model selection is driven by theory, not MSE.")
+
+
+# ==============================================================
+# 4. Regularization: Ridge and Lasso
+# ==============================================================
+# Regularization adds a penalty to the OLS loss function:
+#
+#   Ridge (L2):  min ||y - Xβ||² + α * ||β||²
+#     Shrinks all coefficients toward zero; never exactly zeros them out.
+#     Good when many features have small true effects.
+#
+#   Lasso (L1):  min ||y - Xβ||² + α * Σ|β_j|
+#     Shrinks some coefficients to exactly zero (feature selection).
+#     Good when most features are irrelevant.
+#
+# Higher α -> more shrinkage -> lower variance, higher bias.
+# Standardize X before regularizing so the penalty treats all features equally.
+
+def demo_regularization() -> None:
+    df_all = make_prediction_data()
+    split  = int(0.7 * N_PRED)
+    train  = df_all.iloc[:split].reset_index(drop=True)
+    test   = df_all.iloc[split:].reset_index(drop=True)
+
+    features = [f"x{j}" for j in range(1, N_FEATS + 1)]
+
+    # Standardize features (fit on train, apply to both)
+    mu  = train[features].mean()
+    std = train[features].std()
+
+    X_tr = (train[features] - mu) / std
+    X_te = (test[features]  - mu) / std
+    y_tr = train["y"].values
+    y_te = test["y"].values
+
+    X_tr_c = sm.add_constant(X_tr.values)
+    X_te_c = sm.add_constant(X_te.values)
+
+    # OLS
+    ols_res = sm.OLS(y_tr, X_tr_c).fit()
+    ols_mse = ((y_te - ols_res.predict(X_te_c)) ** 2).mean()
+
+    # Ridge and Lasso with statsmodels elastic net
+    best_ridge_mse = np.inf
+    best_lasso_mse = np.inf
+    best_ridge, best_lasso = None, None
+
+    for alpha in [0.01, 0.05, 0.1, 0.5, 1.0, 5.0]:
+        ridge = sm.OLS(y_tr, X_tr_c).fit_regularized(method="elastic_net",
+                                                       alpha=alpha, L1_wt=0.0)
+        lasso = sm.OLS(y_tr, X_tr_c).fit_regularized(method="elastic_net",
+                                                       alpha=alpha, L1_wt=1.0)
+        r_mse = ((y_te - X_te_c @ ridge.params) ** 2).mean()
+        l_mse = ((y_te - X_te_c @ lasso.params) ** 2).mean()
+        if r_mse < best_ridge_mse:
+            best_ridge_mse = r_mse
+            best_ridge = ridge
+        if l_mse < best_lasso_mse:
+            best_lasso_mse = l_mse
+            best_lasso = lasso
+
+    # Non-zero coefficients in Lasso (excluding intercept)
+    lasso_nonzero = (np.abs(best_lasso.params[1:]) > 1e-6).sum()
+
+    print(f"\n  High-dimensional prediction: {N_FEATS} features, 3 truly predictive")
+    print(f"  Train N = {len(train)}, Test N = {len(test)}")
+    print()
+    print(f"  {'Method':>8} | {'Test MSE':>10} | Non-zero coefs")
+    print(f"  {'-'*8}-+-{'-'*10}-+-{'-'*15}")
+    print(f"  {'OLS':>8} | {ols_mse:>10.4f} | {N_FEATS} (all retained)")
+    print(f"  {'Ridge':>8} | {best_ridge_mse:>10.4f} | {N_FEATS} (all shrunk)")
+    print(f"  {'Lasso':>8} | {best_lasso_mse:>10.4f} | {lasso_nonzero} (others zeroed)")
+
+    print()
+    print("  True features: x1, x2, x3.  Features x4-x20 are pure noise.")
+    true_vars = ["x1", "x2", "x3"]
+    print(f"  Lasso coefficients on true features (standardized scale):")
+    for j, var in enumerate(features[:5], start=1):  # show first 5
+        lc = best_lasso.params[j]
+        flag = "(true)" if var in true_vars else "(noise)"
+        print(f"    {var}: {lc:>8.4f}  {flag}")
+    print("    ...")
+    print()
+    print("  Lasso zeroes noise features and retains signal features.")
+    print("  Ridge shrinks all coefficients but keeps them all non-zero.")
+    print("  Both outperform OLS out-of-sample when features outnumber signal.")
