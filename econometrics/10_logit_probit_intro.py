@@ -391,3 +391,84 @@ def demo_predicted_probs() -> None:
     print()
     print("  Lower thresholds increase recall (catch more positives) at the")
     print("  cost of precision (more false positives).  Choose based on costs.")
+
+
+# ==============================================================
+# 8. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("Is the outcome binary (0/1)?",
+         "No  -> use OLS, ordered logit/probit, or multinomial logit.",
+         "Yes -> logit or probit is the right tool."),
+
+        ("Start with the Linear Probability Model?",
+         "Yes -> LPM gives a quick read on coefficients (probability scale).",
+         "     Always use robust SEs.  Confirm main findings with logit/probit."),
+
+        ("Logit or probit?",
+         "Logit -> standard in economics; log-odds and odds ratios available.",
+         "Probit -> standard in some other fields; nearly identical conclusions."),
+
+        ("How do you interpret coefficients?",
+         "Raw logit β:  change in log-odds (hard to communicate).",
+         "AME:          change in P(y=1) averaged over the sample.  Preferred."),
+
+        ("How do you assess model fit?",
+         "McFadden R² > 0.2 is good; compare AIC/BIC across specifications.",
+         "For classification tasks also report AUC and confusion matrix metrics."),
+
+        ("Is the sample size adequate?",
+         "Rule of thumb: at least 10–15 events (y=1 observations) per predictor.",
+         "Too few events inflates coefficients -- the separation problem."),
+
+        ("Are positive outcomes very rare (< 5%)?",
+         "Yes -> imbalanced outcome.  Default 0.5 threshold predicts all zeros.",
+         "     Adjust threshold, oversample, or consider Firth penalized logit."),
+    ]
+
+    print()
+    for i, (question, opt_a, opt_b) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  Logit and probit are workhorses of applied microeconometrics.")
+    print("  Report AMEs alongside log-odds coefficients for clarity.")
+    print("  Always check for perfect separation and adequate events-per-variable.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Why OLS Fails for Binary Outcomes")
+    demo_lpm_problems()
+
+    section("2. The Latent Variable Model")
+    demo_latent_variable()
+
+    section("3. Logit: Logistic Regression")
+    demo_logit()
+
+    section("4. Probit: Normal CDF Model")
+    demo_probit()
+
+    section("5. Marginal Effects")
+    demo_marginal_effects()
+
+    section("6. Model Fit and Diagnostics")
+    demo_model_fit()
+
+    section("7. Predicted Probabilities and Threshold Selection")
+    demo_predicted_probs()
+
+    section("8. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
