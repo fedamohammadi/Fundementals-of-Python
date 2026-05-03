@@ -214,24 +214,38 @@ def kfold_mse(df: pd.DataFrame, degree: int, k: int = 5, seed: int = 0) -> float
 def demo_cross_validation() -> None:
     df = make_poly_data(n=N_BV)
 
-    print(f"\n  5-fold CV on polynomial regression  (true degree = {TRUE_DEG}, N = {N_BV})")
+    print(f"\n  Train MSE vs 5-fold CV MSE  (true degree = {TRUE_DEG}, N = {N_BV})")
     print()
-    print(f"  {'Degree':>7} | {'CV MSE':>10} | Selected?")
-    print(f"  {'-'*7}-+-{'-'*10}-+-{'-'*10}")
+    print(f"  {'Degree':>7} | {'Train MSE':>10} | {'CV MSE':>10} | Train selects? | CV selects?")
+    print(f"  {'-'*7}-+-{'-'*10}-+-{'-'*10}-+-{'-'*15}-+-{'-'*12}")
 
-    cv_mses = {}
+    train_mses = {}
+    cv_mses    = {}
     for deg in range(1, 9):
-        cv_mses[deg] = kfold_mse(df, degree=deg)
+        # Train MSE: fit on full dataset, evaluate on same data (in-sample)
+        _, _ = poly_mse(df, df, deg)  # placeholder — compute directly below
+        extra = {f"x{d}": df["x"].values ** d for d in range(2, deg + 1)}
+        df_aug = df.assign(**extra)
+        formula = "y ~ " + " + ".join(["x"] + [f"x{d}" for d in range(2, deg + 1)])
+        m = smf.ols(formula, data=df_aug).fit()
+        train_mses[deg] = (m.resid ** 2).mean()
+        cv_mses[deg]    = kfold_mse(df, degree=deg)
 
-    best_deg = min(cv_mses, key=cv_mses.get)
-    for deg, cv_mse in cv_mses.items():
-        flag = "<-- best" if deg == best_deg else ""
-        print(f"  {deg:>7} | {cv_mse:>10.4f} | {flag}")
+    best_train = min(train_mses, key=train_mses.get)
+    best_cv    = min(cv_mses,    key=cv_mses.get)
+
+    for deg in range(1, 9):
+        tr_flag = "<--" if deg == best_train else ""
+        cv_flag = "<--" if deg == best_cv    else ""
+        print(f"  {deg:>7} | {train_mses[deg]:>10.4f} | {cv_mses[deg]:>10.4f} | "
+              f"{tr_flag:>15} | {cv_flag:>12}")
 
     print()
-    print(f"  CV selected degree {best_deg} (true degree is {TRUE_DEG}).")
-    print("  CV penalizes complexity through held-out error, not training error.")
-    print("  Training MSE would always pick the highest degree -- it never stops.")
+    print(f"  Train MSE selected degree {best_train} -- the most complex model tried.")
+    print(f"  CV selected degree {best_cv}  -- close to the true degree {TRUE_DEG}.")
+    print()
+    print("  In-sample MSE always favors more flexibility; it never penalizes complexity.")
+    print("  CV estimates out-of-sample error and correctly identifies the right degree.")
     print()
     print("  CV is the standard tool for selecting hyperparameters in prediction.")
     print("  For causal models, model selection is driven by theory, not MSE.")
