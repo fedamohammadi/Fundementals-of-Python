@@ -321,3 +321,106 @@ def demo_regularization() -> None:
     print("  Lasso zeroes noise features and retains signal features.")
     print("  Ridge shrinks all coefficients but keeps them all non-zero.")
     print("  Both outperform OLS out-of-sample when features outnumber signal.")
+
+
+# ==============================================================
+# 5. Why Good Prediction Does Not Imply Causation
+# ==============================================================
+# A model can predict y perfectly from x without x being the cause of y.
+# Three common reasons prediction ≠ causation:
+#
+#   1. Spurious correlation: a third variable C causes both x and y.
+#      x predicts y in the data, but changing x (holding C fixed) does nothing.
+#
+#   2. Reverse causation: y causes x.
+#      Knowing x predicts y (high R²), but intervening on x won't change y.
+#
+#   3. Proxy variables: x measures a latent construct that causes y.
+#      x predicts y through the latent variable, not through x itself.
+#
+# The key test is an intervention: fix x externally (e.g., randomize it)
+# and observe whether y changes.  Prediction cannot answer this from
+# observational data alone.
+
+def demo_prediction_not_causation() -> None:
+    rng  = np.random.default_rng(42)
+    n    = 800
+
+    # Spurious correlation: C -> X, C -> Y
+    C = rng.standard_normal(n)
+    X = 0.8 * C + rng.normal(0, 0.5, n)
+    Y = 2.0 * C + rng.normal(0, 0.5, n)   # X has NO direct effect on Y
+
+    df = pd.DataFrame({"Y": Y, "X": X, "C": C})
+
+    naive   = smf.ols("Y ~ X",     data=df).fit()
+    correct = smf.ols("Y ~ X + C", data=df).fit()
+
+    print(f"\n  True causal effect of X on Y: 0.00  (X and Y share a common cause C)")
+    print(f"  Corr(X, C) = {df['X'].corr(df['C']):.3f}   Corr(X, Y) = {df['X'].corr(df['Y']):.3f}")
+    print()
+    print(f"  {'Model':>20} | {'b_X':>8} | {'R²':>7} | Prediction quality")
+    print(f"  {'-'*20}-+-{'-'*8}-+-{'-'*7}-+-{'-'*20}")
+
+    for label, m in [("Y ~ X (no C)", naive), ("Y ~ X + C (correct)", correct)]:
+        b   = m.params["X"]
+        mse = (m.resid ** 2).mean()
+        print(f"  {label:>20} | {b:>8.4f} | {m.rsquared:>7.4f} | MSE = {mse:.4f}")
+
+    print()
+    print("  The naive model finds a strong, significant relationship between X and Y")
+    print("  (high R², low p-value) even though changing X would have NO effect on Y.")
+    print("  X predicts Y only because both proxy the omitted common cause C.")
+    print()
+    print("  An RCT that randomizes X would show b_X ≈ 0 (X has no direct effect).")
+    print("  Observational prediction models cannot distinguish this from true causation.")
+
+
+# ==============================================================
+# 6. Bad Controls and Post-Treatment Bias
+# ==============================================================
+# A "bad control" is a variable that is itself caused by the treatment.
+# Including it in the regression partials out part of the treatment's
+# causal effect, biasing the estimate toward zero.
+#
+# This is sometimes called the "Table 2 fallacy" (Westreich & Greenland 2013):
+# published tables showing all OLS coefficients from a model with many controls
+# may look like causal estimates for each variable, but coefficients on post-
+# treatment mediators do not have a causal interpretation.
+#
+# Example causal chain:
+#   treat -> mediator -> y    (the indirect path)
+#   treat             -> y    (the direct path)
+#   Total effect of treat = direct + indirect.
+#
+# Controlling for the mediator recovers only the direct path, not the total.
+
+def demo_bad_controls() -> None:
+    df = make_causal_data()
+
+    total_m    = smf.ols("y ~ treat + confound",             data=df).fit()
+    with_med   = smf.ols("y ~ treat + confound + mediator",  data=df).fit()
+    mediator_m = smf.ols("mediator ~ treat",                 data=df).fit()
+
+    print(f"\n  True total effect of treat on y:   {TRUE_TREAT:.2f}")
+    print(f"  True effect of treat on mediator:  0.60")
+    print()
+    print(f"  {'Model':>36} | b_treat | Interpretation")
+    print(f"  {'-'*36}-+-{'-'*8}-+-{'-'*30}")
+
+    print(f"  {'Total effect (no mediator control)':>36} | {total_m.params['treat']:>7.4f} | total effect")
+    print(f"  {'With mediator (bad control)':>36} | {with_med.params['treat']:>7.4f} | direct effect only")
+
+    print()
+    print(f"  Mediator model:  treat -> mediator,  b = {mediator_m.params['treat']:.4f}")
+    print()
+    print("  The indirect path: treat -> mediator -> y.")
+    print(f"  Indirect effect ≈ b(treat->mediator) × b(mediator->y in full model)")
+    b_m_in_full = with_med.params.get("mediator", 0)
+    indirect = mediator_m.params["treat"] * b_m_in_full
+    print(f"  ≈ {mediator_m.params['treat']:.3f} × {b_m_in_full:.3f} = {indirect:.4f}")
+    print(f"  Direct + Indirect ≈ {with_med.params['treat']:.4f} + {indirect:.4f} = {with_med.params['treat'] + indirect:.4f}")
+    print()
+    print("  Controlling for the mediator is correct when you want ONLY the direct path.")
+    print("  If you want the TOTAL effect, do NOT control for the mediator.")
+    print("  Knowing which effect you want is a causal question, not a statistical one.")
