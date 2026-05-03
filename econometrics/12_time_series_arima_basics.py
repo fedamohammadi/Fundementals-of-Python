@@ -381,3 +381,153 @@ def demo_estimation() -> None:
     print()
     print("  Residuals should look like white noise.  If the Ljung-Box test")
     print("  rejects, the model is under-specified -- increase p or q.")
+
+
+# ==============================================================
+# 7. Forecasting
+# ==============================================================
+# Once an ARIMA model is fitted, it produces h-step ahead forecasts.
+#
+# For a fitted ARIMA(p, d, q):
+#   - 1-step forecast: plug in last p observed values and last q errors.
+#   - h-step forecast (h > 1): recursively substitute predicted values;
+#     forecast uncertainty grows with h (confidence intervals widen).
+#
+# Forecast evaluation:
+#   RMSE = sqrt(mean((y_actual - y_hat)²))  -- penalizes large errors more
+#   MAE  = mean(|y_actual - y_hat|)          -- more robust to outliers
+#
+# A good forecasting model should outperform the naive forecast
+# (predicting last observed value for all horizons).
+
+def demo_forecasting() -> None:
+    y_all = make_ar1(n=N_TS + 20)  # extra 20 observations as hold-out
+    y_train = y_all[:N_TS]
+    y_test  = y_all[N_TS:]
+    h       = len(y_test)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res_ar1  = ARIMA(y_train, order=(1, 0, 0)).fit()
+        res_rw   = ARIMA(y_train, order=(0, 1, 0)).fit()
+
+    fc_ar1 = res_ar1.get_forecast(steps=h)
+    fc_rw  = res_rw.get_forecast(steps=h)
+
+    # Naive forecast: repeat last observed value
+    naive_fc = np.full(h, y_train[-1])
+
+    def rmse(actual: np.ndarray, pred: np.ndarray) -> float:
+        return float(np.sqrt(((actual - pred) ** 2).mean()))
+
+    def mae(actual: np.ndarray, pred: np.ndarray) -> float:
+        return float(np.abs(actual - pred).mean())
+
+    print(f"\n  {h}-step ahead forecasting on AR(1) series (true phi = {PHI})")
+    print(f"  Train: {N_TS} obs   Test (hold-out): {h} obs")
+    print()
+    print(f"  {'Model':>22} | {'RMSE':>8} | MAE")
+    print(f"  {'-'*22}-+-{'-'*8}-+-{'-'*8}")
+
+    for label, pred in [("AR(1) forecast",    fc_ar1.predicted_mean),
+                         ("Random walk (I(1))", fc_rw.predicted_mean),
+                         ("Naive (last value)", naive_fc)]:
+        print(f"  {label:>22} | {rmse(y_test, pred):>8.4f} | {mae(y_test, pred):.4f}")
+
+    # Show confidence intervals for AR(1) forecast
+    ci = fc_ar1.conf_int(alpha=0.05)
+    print()
+    print(f"  AR(1) 95% forecast intervals (first 5 steps):")
+    print(f"  {'Step':>6} | {'Point':>8} | {'Lower':>8} | Upper")
+    print(f"  {'-'*6}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}")
+    for i in range(min(5, h)):
+        pt = float(fc_ar1.predicted_mean.iloc[i])
+        lo = float(ci.iloc[i, 0])
+        hi = float(ci.iloc[i, 1])
+        print(f"  {i+1:>6} | {pt:>8.4f} | {lo:>8.4f} | {hi:.4f}")
+
+    print()
+    print("  Confidence intervals widen with horizon -- uncertainty grows as")
+    print("  the forecast relies on more predicted (rather than observed) values.")
+    print("  An AR(1) model should outperform the naive forecast when |phi| > 0.")
+
+
+# ==============================================================
+# 8. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("Step 1: Check for stationarity.",
+         "Plot the series.  If it drifts or variance grows, it is likely non-stationary.",
+         "Run the ADF test.  If p > 0.05, difference the series (increase d by 1)."),
+
+        ("Step 2: Identify p and q from ACF/PACF of the differenced series.",
+         "PACF cuts off at lag p  -> AR(p) component.",
+         "ACF cuts off at lag q   -> MA(q) component."),
+
+        ("Step 3: Fit candidate models and compare AIC/BIC.",
+         "Start simple: AR(1), MA(1), ARMA(1,1).",
+         "Fit a small grid of (p, d, q) values and select the minimum AIC or BIC."),
+
+        ("Step 4: Check residuals.",
+         "ACF of residuals should show no significant spikes (white noise).",
+         "Ljung-Box p > 0.05 means residuals are not significantly autocorrelated."),
+
+        ("Step 5: Forecast and evaluate.",
+         "Use get_forecast() for point predictions and confidence intervals.",
+         "Evaluate on a held-out test set with RMSE and MAE."),
+
+        ("Common pitfalls:",
+         "Over-differencing: too many d introduces MA structure that wasn't there.",
+         "Ignoring seasonality: use SARIMA for monthly/quarterly economic data."),
+
+        ("When ARIMA is not enough:",
+         "Structural breaks: use regime-switching or segmented trend models.",
+         "Multivariate dynamics: use VAR (vector autoregression) across series."),
+    ]
+
+    print()
+    for i, (question, opt_a, opt_b) in enumerate(guide, 1):
+        print(f"  {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  ARIMA is the workhorse of univariate time series econometrics.")
+    print("  It handles trends via differencing and short-run dynamics via AR/MA.")
+    print("  For seasonality, cointegration, or multivariate series, see files 13-16.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Stationarity")
+    demo_stationarity()
+
+    section("2. ACF and PACF")
+    demo_acf_pacf()
+
+    section("3. AR(p) Models")
+    demo_ar_models()
+
+    section("4. MA(q) Models")
+    demo_ma_models()
+
+    section("5. ARIMA(p, d, q)")
+    demo_arima()
+
+    section("6. Estimation with statsmodels")
+    demo_estimation()
+
+    section("7. Forecasting")
+    demo_forecasting()
+
+    section("8. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
