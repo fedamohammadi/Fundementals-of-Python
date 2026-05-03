@@ -424,3 +424,82 @@ def demo_bad_controls() -> None:
     print("  Controlling for the mediator is correct when you want ONLY the direct path.")
     print("  If you want the TOTAL effect, do NOT control for the mediator.")
     print("  Knowing which effect you want is a causal question, not a statistical one.")
+
+
+# ==============================================================
+# 7. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    guide = [
+        ("What is the goal of your analysis?",
+         "Prediction  -> maximize out-of-sample accuracy; use CV and regularization.",
+         "Causation   -> identify an effect; use theory to select controls."),
+
+        ("Choosing control variables (prediction goal):",
+         "Include anything correlated with y, even if not causally related.",
+         "More features often help; use Lasso for automatic selection."),
+
+        ("Choosing control variables (causal goal):",
+         "Include confounders (common causes of treatment and outcome).",
+         "Exclude mediators (variables caused by treatment and causing outcome)."),
+
+        ("How do you select model complexity?",
+         "Prediction -> cross-validation (k-fold, typically k=5 or 10).",
+         "Causation  -> theory; simpler models are preferred for interpretability."),
+
+        ("Does a high R² confirm a causal effect?",
+         "No. A high R² only means the model fits the data well.",
+         "A spurious model can have R²=0.99 with zero causal content."),
+
+        ("Is regularization useful for causal models?",
+         "Rarely. Regularization biases coefficients toward zero intentionally.",
+         "For causal models, use unbiased OLS (or IV/FE/DiD) with theory-based controls."),
+
+        ("When should you use prediction methods (ML) vs causal methods?",
+         "Prediction: forecasting prices, classifying emails, detecting fraud.",
+         "Causation: policy evaluation, treatment effect, A/B testing interpretation."),
+    ]
+
+    print()
+    for i, (question, opt_a, opt_b) in enumerate(guide, 1):
+        print(f"  Step {i}: {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  The two goals are not in conflict -- both are valuable.")
+    print("  The mistake is using a prediction model to draw causal conclusions,")
+    print("  or using a causal model when the task is prediction.")
+    print("  Be explicit about your goal before choosing a method.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. The Core Distinction")
+    demo_core_distinction()
+
+    section("2. The Bias-Variance Tradeoff")
+    demo_bias_variance()
+
+    section("3. Cross-Validation")
+    demo_cross_validation()
+
+    section("4. Regularization: Ridge and Lasso")
+    demo_regularization()
+
+    section("5. Why Good Prediction Does Not Imply Causation")
+    demo_prediction_not_causation()
+
+    section("6. Bad Controls and Post-Treatment Bias")
+    demo_bad_controls()
+
+    section("7. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
