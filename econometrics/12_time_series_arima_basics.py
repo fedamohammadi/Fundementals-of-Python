@@ -169,6 +169,54 @@ def demo_acf_pacf() -> None:
 
 
 # ==============================================================
+# 2b. Spurious Regression
+# ==============================================================
+# Regressing one random walk on another produces high R² and
+# significant t-statistics even when the two series are completely
+# unrelated (independent random walks with no common DGP).
+#
+# This is spurious regression (Granger & Newbold 1974):
+#   - Both series drift over time (trending variance).
+#   - OLS picks up the shared drift as a "relationship."
+#   - The t-stat does not follow a standard distribution under H0.
+#   - As N → ∞, the bias gets WORSE, not better.
+#
+# Solution: either difference both series to stationarity, or
+# test for cointegration (if both series share a common stochastic trend,
+# a long-run equilibrium relationship may genuinely exist).
+
+def demo_spurious_regression(n_sims: int = 500) -> None:
+    rng     = np.random.default_rng(12)
+    n       = N_TS
+    t_stats = []
+
+    for _ in range(n_sims):
+        y1 = np.cumsum(rng.normal(0, 1, n))
+        y2 = np.cumsum(rng.normal(0, 1, n))
+        X  = sm.add_constant(y2)
+        res = sm.OLS(y1, X).fit()
+        t_stats.append(float(abs(res.tvalues[1])))
+
+    t_arr       = np.array(t_stats)
+    pct_signif  = (t_arr > 1.96).mean() * 100   # fraction with |t| > 1.96
+
+    print(f"\n  Spurious regression simulation  ({n_sims} pairs of independent random walks)")
+    print(f"  Each series has N = {n} observations; true relationship = none")
+    print()
+    print(f"  Expected rejection rate at 5% level (under H0): ~5%")
+    print(f"  Actual rejection rate (|t| > 1.96):             {pct_signif:.1f}%")
+    print()
+    print(f"  Mean |t-stat|: {t_arr.mean():.2f}  (should be ~2 under H0, is much larger)")
+    print(f"  Max  |t-stat|: {t_arr.max():.2f}")
+    print()
+    print("  Regressing two independent random walks rejects the true H0 (no effect)")
+    print(f"  {pct_signif:.0f}% of the time -- far above the 5% nominal size.")
+    print()
+    print("  Always test for stationarity before running OLS on time series data.")
+    print("  Non-stationary series require differencing or cointegration analysis.")
+
+
+# ==============================================================
 # 3. AR(p) Models
 # ==============================================================
 # An AR(p) process models y_t as a linear function of its own past p values:
@@ -509,6 +557,9 @@ def main() -> None:
 
     section("2. ACF and PACF")
     demo_acf_pacf()
+
+    section("2b. Spurious Regression")
+    demo_spurious_regression()
 
     section("3. AR(p) Models")
     demo_ar_models()
