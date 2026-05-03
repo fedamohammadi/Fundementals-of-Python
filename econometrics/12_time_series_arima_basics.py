@@ -274,3 +274,110 @@ def demo_ma_models() -> None:
     print(f"    rho(2) sample ACF  = {acf_vals[2]:.4f}  (should be near 0)")
     print()
     print("  The ACF cuts off sharply after lag q=1, a hallmark of an MA process.")
+
+
+# ==============================================================
+# 5. ARIMA(p, d, q)
+# ==============================================================
+# ARIMA generalizes ARMA to handle non-stationary series:
+#
+#   ARIMA(p, d, q): apply an ARMA(p,q) model to the d-th difference of y.
+#
+#   d=0: y_t is already stationary -> ARMA(p, q)
+#   d=1: model Δy_t = y_t - y_{t-1} with ARMA(p, q)
+#   d=2: model Δ²y_t = (y_t - y_{t-1}) - (y_{t-2} - y_{t-1}) with ARMA(p, q)
+#
+# Selecting p, d, q:
+#   1. Determine d from ADF tests and ACF plots.
+#   2. Inspect ACF and PACF of the d-th differenced series to identify p and q.
+#   3. Fit candidate models and compare by AIC or BIC (lower is better).
+#
+# Special cases:
+#   ARIMA(0,1,0): random walk
+#   ARIMA(1,0,0): AR(1)
+#   ARIMA(0,0,1): MA(1)
+#   ARIMA(p,1,q): common choice for economic time series with stochastic trend
+
+def demo_arima() -> None:
+    y_rw = make_random_walk()   # I(1) process
+
+    # Compare models by AIC/BIC on the random walk
+    candidates = [(0, 1, 0), (1, 1, 0), (0, 1, 1), (1, 1, 1), (2, 1, 1)]
+
+    print(f"\n  Model selection on a random walk (ARIMA(0,1,0) is true model)")
+    print()
+    print(f"  {'Order (p,d,q)':>14} | {'AIC':>10} | {'BIC':>10} | {'Log-lik':>10}")
+    print(f"  {'-'*14}-+-{'-'*10}-+-{'-'*10}-+-{'-'*10}")
+
+    results = {}
+    for order in candidates:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            res = ARIMA(y_rw, order=order).fit()
+        results[order] = res
+        print(f"  {str(order):>14} | {res.aic:>10.3f} | {res.bic:>10.3f} | {res.llf:>10.3f}")
+
+    best_aic = min(results, key=lambda o: results[o].aic)
+    best_bic = min(results, key=lambda o: results[o].bic)
+    print()
+    print(f"  Best by AIC: ARIMA{best_aic}")
+    print(f"  Best by BIC: ARIMA{best_bic}")
+    print()
+    print("  BIC penalizes complexity more heavily (larger k penalty = ln(n) vs 2).")
+    print("  BIC tends to prefer simpler models; AIC may overfit in small samples.")
+    print("  Both should agree with the true order on large enough samples.")
+
+
+# ==============================================================
+# 6. Estimation with statsmodels
+# ==============================================================
+# statsmodels.tsa.arima.model.ARIMA fits ARIMA models by maximum likelihood.
+#
+# Key outputs from the fitted result:
+#   .params         - estimated coefficients
+#   .bse            - standard errors
+#   .aic, .bic      - information criteria
+#   .resid          - model residuals
+#   .plot_diagnostics() - residual plots (requires matplotlib)
+#
+# Residual diagnostics:
+#   - ACF of residuals should show no significant autocorrelation.
+#   - Ljung-Box test: H0 = residuals are white noise.
+#     If p > 0.05, residuals are not significantly autocorrelated (good).
+
+def demo_estimation() -> None:
+    y = make_arma11()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = ARIMA(y, order=(1, 0, 1)).fit()
+
+    print(f"\n  ARIMA(1,0,1) fit on ARMA(1,1) data  (true phi={PHI}, theta={THETA})")
+    print()
+    print(f"  AIC = {res.aic:.3f}   BIC = {res.bic:.3f}   Log-lik = {res.llf:.3f}")
+    print()
+    print(f"  {'Parameter':>12} | {'True':>7} | {'Estimate':>9} | {'SE':>8} | 95% CI")
+    print(f"  {'-'*12}-+-{'-'*7}-+-{'-'*9}-+-{'-'*8}-+-{'-'*22}")
+
+    param_map = [("const", 0.0), ("ar.L1", PHI), ("ma.L1", THETA)]
+    for name, true_val in param_map:
+        if name in res.params.index:
+            est = res.params[name]
+            se  = res.bse[name]
+            lo  = est - 1.96 * se
+            hi  = est + 1.96 * se
+            print(f"  {name:>12} | {true_val:>7.3f} | {est:>9.4f} | {se:>8.4f} | [{lo:.3f}, {hi:.3f}]")
+
+    # Ljung-Box test on residuals
+    from statsmodels.stats.diagnostic import acorr_ljungbox
+    lb = acorr_ljungbox(res.resid, lags=[10], return_df=True)
+    lb_pval = float(lb["lb_pvalue"].iloc[0])
+    print()
+    print(f"  Residual diagnostics:")
+    print(f"    Ljung-Box test (10 lags): p = {lb_pval:.4f}", end="  ")
+    print("(white noise -- good)" if lb_pval > 0.05 else "(autocorrelation detected)")
+    print(f"    Residual mean:  {res.resid.mean():.4f}")
+    print(f"    Residual std:   {res.resid.std():.4f}  (true sigma = {SIGMA:.2f})")
+    print()
+    print("  Residuals should look like white noise.  If the Ljung-Box test")
+    print("  rejects, the model is under-specified -- increase p or q.")
