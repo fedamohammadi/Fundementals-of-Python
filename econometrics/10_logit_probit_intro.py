@@ -138,3 +138,97 @@ def demo_latent_variable() -> None:
     print("  The two CDFs agree closely in the center and diverge slightly")
     print("  in the tails (logit has heavier tails than the normal).")
     print("  In practice the choice between logit and probit rarely changes conclusions.")
+
+
+# ==============================================================
+# 3. Logit: Logistic Regression
+# ==============================================================
+# The logit model specifies:
+#
+#   P(y=1 | x) = Λ(xβ) = 1 / (1 + exp(-xβ))
+#
+# The log-odds (logit link) is linear in x:
+#
+#   log[ P / (1-P) ] = xβ
+#
+# β_j is the change in log-odds per unit increase in x_j.
+# The odds ratio exp(β_j) > 1 means higher x_j raises P(y=1).
+#
+# Estimated by maximum likelihood.  In large samples, MLE is unbiased,
+# consistent, and asymptotically normal (z-tests, not t-tests).
+
+def demo_logit() -> None:
+    df    = make_binary_data()
+    model = smf.logit("participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+
+    print(f"\n  Logit: log-odds coefficients  (N = {N_OBS})")
+    print()
+    print(f"  {'Variable':>10} | {'Coef':>8} | {'SE':>7} | {'z':>7} | {'p':>8} | Odds Ratio")
+    print(f"  {'-'*10}-+-{'-'*8}-+-{'-'*7}-+-{'-'*7}-+-{'-'*8}-+-{'-'*11}")
+
+    for var in ["Intercept", "educ", "exper", "exper2", "kids"]:
+        b  = model.params[var]
+        se = model.bse[var]
+        z  = model.tvalues[var]
+        p  = model.pvalues[var]
+        or_ = np.exp(b)
+        print(f"  {var:>10} | {b:>8.4f} | {se:>7.4f} | {z:>7.2f} | {p:>8.4f} | {or_:>11.4f}")
+
+    print()
+    print("  True DGP: educ=0.08, exper=0.05, exper²=-0.001, kids=-0.80")
+    print("  (Logit is the true model here; estimates should be close.)")
+    print()
+    or_educ = np.exp(model.params["educ"])
+    print(f"  Odds ratio for educ = {or_educ:.4f}")
+    print("  Each additional year of education multiplies the participation")
+    print(f"  odds by {or_educ:.3f} -- a {(or_educ - 1)*100:.1f}% increase in the odds.")
+
+
+# ==============================================================
+# 4. Probit: Normal CDF Model
+# ==============================================================
+# The probit model specifies:
+#
+#   P(y=1 | x) = Φ(xβ)
+#
+# Φ is the standard normal CDF.  Coefficients are on the scale of
+# standard deviations of the latent index.
+#
+# Logit vs probit in practice:
+#   - Raw coefficients differ by ~1.81 (the π/√3 scale factor).
+#   - Predicted probabilities are nearly identical.
+#   - Logit is more common in economics (log-odds are convenient).
+#   - Choice between them almost never affects substantive conclusions.
+
+def demo_probit() -> None:
+    df         = make_binary_data()
+    logit_res  = smf.logit( "participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+    probit_res = smf.probit("participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+
+    scale = np.pi / np.sqrt(3)
+
+    print(f"\n  Logit vs Probit  (scale factor π/√3 ≈ {scale:.4f})")
+    print()
+    print(f"  {'Variable':>10} | {'Logit β':>9} | {'Probit β':>9} | {'Ratio':>7} | Rescaled probit")
+    print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*9}-+-{'-'*7}-+-{'-'*16}")
+
+    for var in ["educ", "exper", "exper2", "kids"]:
+        bl      = logit_res.params[var]
+        bp      = probit_res.params[var]
+        ratio   = bl / bp if abs(bp) > 1e-8 else float("nan")
+        rescaled = bp * scale
+        print(f"  {var:>10} | {bl:>9.4f} | {bp:>9.4f} | {ratio:>7.3f} | {rescaled:>16.4f}")
+
+    p_logit  = logit_res.predict()
+    p_probit = probit_res.predict()
+    corr     = np.corrcoef(p_logit, p_probit)[0, 1]
+    mae      = np.abs(p_logit - p_probit).mean()
+
+    print()
+    print(f"  Predicted probability agreement:")
+    print(f"    Correlation:               {corr:.6f}")
+    print(f"    Mean absolute difference:  {mae:.6f}")
+    print()
+    print("  Despite different raw coefficients, both models produce")
+    print("  nearly identical predicted probabilities.  Report the model")
+    print("  conventional in your field; add the other as a robustness check.")
