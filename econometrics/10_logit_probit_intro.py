@@ -232,3 +232,57 @@ def demo_probit() -> None:
     print("  Despite different raw coefficients, both models produce")
     print("  nearly identical predicted probabilities.  Report the model")
     print("  conventional in your field; add the other as a robustness check.")
+
+
+# ==============================================================
+# 5. Marginal Effects
+# ==============================================================
+# In a linear model, β directly measures ∂E[y]/∂x_j.
+# In logit/probit, the marginal effect on P(y=1) is:
+#
+#   ∂P/∂x_j = f(xβ) × β_j
+#
+# where f is the PDF of the model (logistic or normal).
+# This varies across observations, so we summarize it:
+#
+#   AME (Average Marginal Effect): average of individual f(xᵢβ)×β_j.
+#        Recommended for most reports; comparable to the LPM coefficient.
+#
+#   MEM (Marginal Effect at the Mean): f(x̄β)×β_j, evaluated at the
+#        sample mean of x.  Simpler but can be misleading if x̄ is not
+#        representative (e.g., continuous x with a bimodal distribution).
+#
+# For binary x_j: the marginal effect is ΔP = Λ(xβ + β_j) - Λ(xβ).
+
+def demo_marginal_effects() -> None:
+    df    = make_binary_data()
+    model = smf.logit("participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+
+    ame = model.get_margeff(at="overall")
+    mem = model.get_margeff(at="mean")
+
+    ame_effects = dict(zip(ame.summary_frame().index, ame.margeff))
+    ame_ses     = dict(zip(ame.summary_frame().index, ame.margeff_se))
+    mem_effects = dict(zip(mem.summary_frame().index, mem.margeff))
+    mem_ses     = dict(zip(mem.summary_frame().index, mem.margeff_se))
+
+    print(f"\n  Marginal effects on P(participate=1)")
+    print()
+    print(f"  {'Variable':>10} | {'AME':>9} | {'AME SE':>8} | {'MEM':>9} | MEM SE")
+    print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*8}-+-{'-'*9}-+-{'-'*8}")
+
+    for var in ["educ", "exper", "exper2", "kids"]:
+        print(f"  {var:>10} | {ame_effects[var]:>9.4f} | {ame_ses[var]:>8.4f} | "
+              f"{mem_effects[var]:>9.4f} | {mem_ses[var]:>8.4f}")
+
+    print()
+    print(f"  AME for educ: {ame_effects['educ']:.4f}")
+    print("  One extra year of education raises P(participate) by")
+    print(f"  {ame_effects['educ']:.4f} on average (averaged over all observations).")
+    print()
+    print("  True DGP: educ coefficient = 0.08 in log-odds.")
+    print("  AME converts this to a probability scale; the exact value")
+    print("  depends on the distribution of xβ in the sample.")
+    print()
+    print("  AME is preferred over MEM: it averages over the actual")
+    print("  sample distribution rather than a hypothetical average person.")
