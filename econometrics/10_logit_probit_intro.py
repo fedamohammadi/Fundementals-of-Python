@@ -286,3 +286,108 @@ def demo_marginal_effects() -> None:
     print()
     print("  AME is preferred over MEM: it averages over the actual")
     print("  sample distribution rather than a hypothetical average person.")
+
+
+# ==============================================================
+# 6. Model Fit and Diagnostics
+# ==============================================================
+# Standard R² doesn't apply to binary outcomes.  Common alternatives:
+#
+#   McFadden pseudo-R²:  1 - LL_full / LL_null
+#     Ranges [0, 1]; values of 0.2–0.4 indicate good fit.
+#
+#   AIC = -2*LL + 2k      BIC = -2*LL + k*ln(n)
+#     Lower is better.  Compare nested and non-nested models.
+#
+#   Accuracy: fraction correctly classified at a given threshold.
+#
+#   Brier score: E[(p̂ - y)²].  Lower is better; 0.25 = naive baseline.
+
+def demo_model_fit() -> None:
+    df   = make_binary_data()
+    null = smf.logit("participate ~ 1",    data=df).fit(disp=False)
+    red  = smf.logit("participate ~ educ", data=df).fit(disp=False)
+    full = smf.logit("participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+
+    print(f"\n  {'Model':>24} | {'McF-R²':>8} | {'AIC':>9} | {'BIC':>9} | {'Accuracy':>9} | Brier")
+    print(f"  {'-'*24}-+-{'-'*8}-+-{'-'*9}-+-{'-'*9}-+-{'-'*9}-+-{'-'*8}")
+
+    for label, m in [("Null (intercept only)", null),
+                     ("Reduced (educ only)",   red),
+                     ("Full model",            full)]:
+        phat   = m.predict()
+        mcf    = 1 - m.llf / null.llf
+        acc    = ((phat >= 0.5).astype(int) == df["participate"]).mean()
+        brier  = ((phat - df["participate"]) ** 2).mean()
+        print(f"  {label:>24} | {mcf:>8.4f} | {m.aic:>9.2f} | {m.bic:>9.2f} | "
+              f"{acc:>9.4f} | {brier:.4f}")
+
+    print()
+    print("  McFadden R² > 0.2 indicates a reasonably good fit.")
+    print("  AIC/BIC both prefer the full model (lower values).")
+    print("  Accuracy improves but can be misleading with imbalanced outcomes;")
+    print("  always pair it with Brier score or AUC.")
+
+
+# ==============================================================
+# 7. Predicted Probabilities and Threshold Selection
+# ==============================================================
+# The default 0.5 threshold maximizes accuracy when classes are balanced,
+# but the optimal threshold depends on the cost of FP vs FN.
+#
+# Key metrics as a function of threshold:
+#   Precision = TP / (TP + FP)   -- of those predicted positive, how many are?
+#   Recall    = TP / (TP + FN)   -- of all positives, how many did we catch?
+#   F1        = 2 * P*R / (P+R)  -- harmonic mean of precision and recall.
+#
+# AUC (area under ROC curve):
+#   Summary of the model's discriminating power across all thresholds.
+#   AUC = 0.5 is random chance; AUC = 1.0 is perfect discrimination.
+
+def demo_predicted_probs() -> None:
+    df   = make_binary_data()
+    fit  = smf.logit("participate ~ educ + exper + exper2 + kids", data=df).fit(disp=False)
+    phat = fit.predict()
+    y    = df["participate"].values
+
+    print(f"\n  Predicted probability summary:")
+    print(f"    Mean: {phat.mean():.3f}   Std: {phat.std():.3f}"
+          f"   Min: {phat.min():.3f}   Max: {phat.max():.3f}")
+    print()
+    print(f"  {'Threshold':>10} | {'Accuracy':>9} | {'Precision':>10} | {'Recall':>8} | F1")
+    print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*10}-+-{'-'*8}-+-{'-'*7}")
+
+    for thresh in [0.3, 0.4, 0.5, 0.6, 0.7]:
+        yhat = (phat >= thresh).astype(int)
+        tp   = int(((yhat == 1) & (y == 1)).sum())
+        fp   = int(((yhat == 1) & (y == 0)).sum())
+        fn   = int(((yhat == 0) & (y == 1)).sum())
+        tn   = int(((yhat == 0) & (y == 0)).sum())
+        acc  = (tp + tn) / len(y)
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec  = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+        f1   = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0.0
+        print(f"  {thresh:>10.1f} | {acc:>9.4f} | {prec:>10.4f} | {rec:>8.4f} | {f1:.4f}")
+
+    # AUC via trapezoidal rule over 200 threshold steps
+    thresholds = np.linspace(0, 1, 201)
+    tprs, fprs = [], []
+    for t in thresholds:
+        yhat = (phat >= t).astype(int)
+        tp = int(((yhat == 1) & (y == 1)).sum())
+        fp = int(((yhat == 1) & (y == 0)).sum())
+        fn = int(((yhat == 0) & (y == 1)).sum())
+        tn = int(((yhat == 0) & (y == 0)).sum())
+        tprs.append(tp / (tp + fn) if (tp + fn) > 0 else 0.0)
+        fprs.append(fp / (fp + tn) if (fp + tn) > 0 else 0.0)
+
+    pairs        = sorted(zip(fprs, tprs))
+    fprs_sorted, tprs_sorted = zip(*pairs)
+    auc = float(np.trapz(tprs_sorted, fprs_sorted))
+
+    print()
+    print(f"  AUC = {auc:.4f}  (0.5 = random, 1.0 = perfect)")
+    print("  AUC > 0.7 is acceptable; > 0.8 is good; > 0.9 is excellent.")
+    print()
+    print("  Lower thresholds increase recall (catch more positives) at the")
+    print("  cost of precision (more false positives).  Choose based on costs.")
