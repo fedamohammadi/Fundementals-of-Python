@@ -166,3 +166,111 @@ def demo_acf_pacf() -> None:
     print("  AR(1): ACF decays geometrically; PACF cuts off after lag 1.")
     print("  MA(1): ACF cuts off after lag 1; PACF decays geometrically.")
     print("  These patterns guide the choice of p and q in ARIMA(p, d, q).")
+
+
+# ==============================================================
+# 3. AR(p) Models
+# ==============================================================
+# An AR(p) process models y_t as a linear function of its own past p values:
+#
+#   y_t = c + phi_1*y_{t-1} + phi_2*y_{t-2} + ... + phi_p*y_{t-p} + eps_t
+#
+# Stationarity condition:
+#   The roots of 1 - phi_1*L - phi_2*L² - ... - phi_p*Lp = 0 must all
+#   lie outside the unit circle in the complex plane.
+#   For AR(1): |phi_1| < 1.
+#
+# Long-run variance of a stationary AR(1):  σ_y² = σ²/(1 - phi²)
+# Autocorrelation decays geometrically:     ρ(k) = phi^k
+
+def demo_ar_models() -> None:
+    y = make_ar1()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = ARIMA(y, order=(1, 0, 0)).fit()
+
+    phi_hat = res.params["ar.L1"]
+    c_hat   = res.params.get("const", 0.0)
+
+    print(f"\n  AR(1) estimation  (true phi = {PHI:.2f}, N = {N_TS})")
+    print()
+    print(f"  {'Parameter':>12} | {'True':>7} | {'Estimate':>9} | {'SE':>8} | {'t':>7}")
+    print(f"  {'-'*12}-+-{'-'*7}-+-{'-'*9}-+-{'-'*8}-+-{'-'*7}")
+
+    for name, true_val, param_key in [("const", 0.0, "const"),
+                                       ("phi_1", PHI, "ar.L1")]:
+        if param_key in res.params.index:
+            est = res.params[param_key]
+            se  = res.bse[param_key]
+            t   = est / se
+            print(f"  {name:>12} | {true_val:>7.3f} | {est:>9.4f} | {se:>8.4f} | {t:>7.2f}")
+
+    # Stationarity check: |phi| < 1
+    print()
+    print(f"  Stationarity check: |phi_hat| = {abs(phi_hat):.4f} < 1  -->  stationary")
+    print()
+
+    # Long-run variance
+    lrv_true = SIGMA ** 2 / (1 - PHI ** 2)
+    lrv_est  = SIGMA ** 2 / (1 - phi_hat ** 2)
+    print(f"  Long-run variance:  true = {lrv_true:.4f}   estimated = {lrv_est:.4f}")
+    print(f"  Sample variance:    {y.var():.4f}")
+    print()
+    print("  Theoretical ACF decays as phi^k:")
+    print(f"  {'Lag k':>8} | {'ACF = phi^k':>12} | Approx expected correlation")
+    print(f"  {'-'*8}-+-{'-'*12}-+-{'-'*28}")
+    for k in [1, 2, 5, 10]:
+        print(f"  {k:>8} | {PHI**k:>12.4f} | {'geometrically decaying' if k > 1 else 'strong, direct effect'}")
+
+
+# ==============================================================
+# 4. MA(q) Models
+# ==============================================================
+# An MA(q) process models y_t as a linear combination of current and past errors:
+#
+#   y_t = mu + eps_t + theta_1*eps_{t-1} + ... + theta_q*eps_{t-q}
+#
+# Key properties:
+#   - Always stationary (error terms are iid, so variance is constant).
+#   - ACF is non-zero only for lags 1 through q, then exactly zero.
+#   - PACF tails off geometrically.
+#
+# Invertibility condition:
+#   The MA polynomial must have roots outside the unit circle.
+#   For MA(1): |theta| < 1.  This ensures a unique representation.
+#   Without invertibility, the MA and AR representations overlap ambiguously.
+
+def demo_ma_models() -> None:
+    y = make_ma1()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res = ARIMA(y, order=(0, 0, 1)).fit()
+
+    theta_hat = res.params["ma.L1"]
+    acf_vals  = acf(y, nlags=5, fft=True)
+
+    print(f"\n  MA(1) estimation  (true theta = {THETA:.2f}, N = {N_TS})")
+    print()
+    print(f"  {'Parameter':>12} | {'True':>7} | {'Estimate':>9} | {'SE':>8} | {'t':>7}")
+    print(f"  {'-'*12}-+-{'-'*7}-+-{'-'*9}-+-{'-'*8}-+-{'-'*7}")
+
+    for name, true_val, param_key in [("const", 0.0, "const"),
+                                       ("theta_1", THETA, "ma.L1")]:
+        if param_key in res.params.index:
+            est = res.params[param_key]
+            se  = res.bse[param_key]
+            t   = est / se
+            print(f"  {name:>12} | {true_val:>7.3f} | {est:>9.4f} | {se:>8.4f} | {t:>7.2f}")
+
+    print()
+    print(f"  Invertibility check: |theta_hat| = {abs(theta_hat):.4f} < 1  -->  invertible")
+    print()
+    print("  Theoretical ACF of MA(1):  rho(1) = theta/(1+theta²),  rho(k≥2) = 0")
+    rho1_true = THETA / (1 + THETA ** 2)
+    print(f"    rho(1) theoretical = {rho1_true:.4f}")
+    print(f"    rho(1) sample ACF  = {acf_vals[1]:.4f}")
+    print(f"    rho(2) sample ACF  = {acf_vals[2]:.4f}  (should be near 0)")
+    print()
+    print("  The ACF cuts off sharply after lag q=1, a hallmark of an MA process.")
