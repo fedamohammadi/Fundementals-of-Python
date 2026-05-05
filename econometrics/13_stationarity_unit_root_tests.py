@@ -257,3 +257,98 @@ def demo_pp_test() -> None:
     print("  Prefer PP when data are seasonally adjusted (likely MA errors).")
     print("  Prefer ADF in small samples with well-motivated lag choice.")
     print("  If they disagree, use KPSS as a tiebreaker.")
+
+
+# ==============================================================
+# 5. Deterministic vs. Stochastic Trends
+# ==============================================================
+# Two sources of trending behavior require different treatments:
+#
+#   Stochastic trend (I(1)):  y_t = y_{t-1} + eps_t
+#     Variance grows with t; shocks have permanent effects.
+#     Treatment: first-difference.
+#
+#   Deterministic trend (trend-stationary):  y_t = a + b*t + eps_t
+#     Variance is constant; shocks are transitory.
+#     Treatment: detrend (OLS residual from y ~ 1 + t), not differencing.
+#
+# Confusing the two:
+#   Differencing a trend-stationary series introduces an MA unit root.
+#   Detrending an I(1) series leaves non-stationary residuals.
+
+def demo_deterministic_vs_stochastic() -> None:
+    rng  = np.random.default_rng(7)
+    n    = N
+    t    = np.arange(n)
+    y_ts = 0.2 * t + rng.normal(0, 1.5, n)          # trend-stationary
+    y_i1 = np.cumsum(rng.normal(0, 1, n))            # I(1) random walk
+
+    X_t = sm.add_constant(t.astype(float))
+    resid_ts = sm.OLS(y_ts, X_t).fit().resid.values
+    resid_i1 = sm.OLS(y_i1, X_t).fit().resid.values
+
+    def adf_p(arr: np.ndarray) -> float:
+        return adfuller(arr, regression="c", autolag="AIC")[1]
+
+    print(f"\n  Detrending vs. differencing  (N = {n})")
+    print()
+    print(f"  {'Series':>22} | {'Original p':>11} | {'Detrended p':>12} | {'Diff p':>8}")
+    print(f"  {'-'*22}-+-{'-'*11}-+-{'-'*12}-+-{'-'*8}")
+    for label, y, detrended in [("Trend-stationary", y_ts, resid_ts),
+                                  ("I(1) random walk",  y_i1, resid_i1)]:
+        print(f"  {label:>22} | {adf_p(y):>11.4f} | {adf_p(detrended):>12.4f} | {adf_p(np.diff(y)):>8.4f}")
+
+    print()
+    print("  Trend-stationary: detrending achieves stationarity; differencing over-adjusts.")
+    print("  I(1) random walk: detrending fails; differencing succeeds.")
+    print("  The ADF 'ct' specification includes a trend and helps distinguish the two.")
+
+
+# ==============================================================
+# 6. Seasonal Integration
+# ==============================================================
+# Seasonal data may have regular AND seasonal unit roots.
+#
+#   Regular unit root:   level drifts over time.
+#   Seasonal unit root:  seasonal pattern itself is non-stationary.
+#
+# For quarterly data (s=4), a seasonal difference is:
+#   Δ₄y_t = y_t - y_{t-4}
+#
+# Heuristic identification:
+#   1. ACF of levels: slow decay everywhere (regular unit root).
+#   2. ACF of Δy: slow decay at seasonal lags 4, 8, 12...
+#      -> suggests a seasonal unit root remains.
+#   3. ACF of Δ₄y: should look like white noise if both removed.
+#
+# Full seasonal unit root testing (HEGY) is outside this file's scope.
+
+def demo_seasonal_integration() -> None:
+    y       = make_seasonal_i1()
+    y_diff  = np.diff(y)
+    y_sdiff = y[4:] - y[:-4]       # seasonal difference lag-4
+    n_lags  = 16
+    ci_95   = 1.96 / np.sqrt(N)
+
+    def show_acf_line(label: str, arr: np.ndarray) -> None:
+        vals      = acf(arr, nlags=n_lags, fft=True)[1:]
+        seas_idx  = {3, 7, 11, 15}    # 0-indexed for lags 4, 8, 12, 16
+        peak_seas = max(abs(vals[i]) for i in seas_idx)
+        print(f"  {label:>32}: max seasonal-lag |ACF| = {peak_seas:.3f}  "
+              f"({'significant' if peak_seas > ci_95 else 'not significant'})")
+
+    print(f"\n  Seasonal integration diagnostics  (quarterly I(1) + seasonality, N={N})")
+    print(f"  Threshold for significance: 1.96/√N = {ci_95:.3f}")
+    print()
+    show_acf_line("Levels", y)
+    show_acf_line("First difference Δy", y_diff)
+    show_acf_line("Seasonal difference Δ₄y", y_sdiff)
+
+    print()
+    adf_p_level = adfuller(y,       regression="c", autolag="AIC")[1]
+    adf_p_diff  = adfuller(y_diff,  regression="c", autolag="AIC")[1]
+    adf_p_sdiff = adfuller(y_sdiff, regression="c", autolag="AIC")[1]
+    print(f"  ADF p-values:  levels = {adf_p_level:.4f}  |  Δy = {adf_p_diff:.4f}  |  Δ₄y = {adf_p_sdiff:.4f}")
+    print()
+    print("  If Δ₄y is stationary but Δy is not, use SARIMA(p,d,q)(P,D,Q)[4].")
+    print("  Adding a seasonal difference (D=1) removes the seasonal stochastic trend.")
