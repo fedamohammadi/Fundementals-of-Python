@@ -341,3 +341,136 @@ def demo_model_comparison() -> None:
     print()
     print("  AIC and BIC select AR(1) -- matching the true DGP.")
     print("  Test RMSE confirms: AR(1) generalizes best out-of-sample.")
+
+
+# ==============================================================
+# 6. Exporting Results
+# ==============================================================
+# Reproducible research requires programmatic output -- never copy-paste.
+#
+#   Plain text:  redirect stdout  (python script.py > results.txt)
+#
+#   CSV:         df.to_csv('table.csv', index=False)
+#     Importable into Excel, R, Stata, or LaTeX (pgfplotstable).
+#
+#   LaTeX:       df.to_latex('table.tex', float_format='%.3f', escape=False)
+#     Include in paper with \input{table.tex}.
+#
+#   statsmodels: result.summary().as_latex()  or  .as_html()
+#     Full regression summary table in publication-ready format.
+
+def demo_exporting() -> None:
+    df = DF_WAGES
+    m  = smf.ols("log_wage ~ educ + exper + exper2 + female", data=df).fit()
+    ci = m.conf_int()
+
+    results_df = pd.DataFrame({
+        "variable": m.params.index,
+        "estimate": m.params.values.round(4),
+        "se":       m.bse.values.round(4),
+        "t":        m.tvalues.values.round(3),
+        "p":        m.pvalues.values.round(4),
+        "ci_lo":    ci[0].values.round(4),
+        "ci_hi":    ci[1].values.round(4),
+    })
+
+    print(f"\n  Tidy results DataFrame  (ready for export)")
+    print()
+    print(results_df.to_string(index=False))
+    print()
+
+    csv_str = results_df.to_csv(index=False)
+    print("  CSV preview (first 3 lines):")
+    for line in csv_str.split("\n")[:3]:
+        print(f"    {line}")
+    print("    ...")
+    print()
+
+    lat_str = results_df.to_latex(index=False, float_format="%.4f",
+                                   caption="OLS Results", label="tab:ols")
+    print("  LaTeX preview (first 5 lines):")
+    for line in lat_str.split("\n")[:5]:
+        print(f"    {line}")
+    print("    ...")
+    print()
+    print("  Export commands:")
+    print("    results_df.to_csv('table.csv', index=False)")
+    print("    results_df.to_latex('table.tex', float_format='%.4f', escape=False)")
+    print("    result.summary().as_latex()   # full statsmodels summary")
+
+
+# ==============================================================
+# 7. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    steps = [
+        ("Step 1: Start with summary statistics.",
+         "Report mean, std, min/max for all variables before any regression.",
+         "Note the sample size; flag binary variables and their frequencies."),
+
+        ("Step 2: Build regression tables incrementally.",
+         "Present models M1 → Mk, adding controls column by column.",
+         "Stable coefficients across columns signal robustness."),
+
+        ("Step 3: Include standard errors, not just stars.",
+         "Stars alone hide the magnitude and precision of effects.",
+         "Report 95% CIs alongside (or instead of) significance stars."),
+
+        ("Step 4: Run and report residual diagnostics.",
+         "Cross-section: check ACF of residuals; test for heteroskedasticity.",
+         "Time series: report Ljung-Box p-value; show ACF of residuals."),
+
+        ("Step 5: Compare models with information criteria.",
+         "AIC for prediction-oriented selection; BIC for parsimony.",
+         "For time series, include test-set RMSE as the primary criterion."),
+
+        ("Step 6: Export everything programmatically.",
+         "Use to_csv() or to_latex() -- never manually type table values.",
+         "Save the script that generates each table for full reproducibility."),
+
+        ("Common mistakes to avoid:",
+         "Reporting only in-sample fit and calling it forecast accuracy.",
+         "Selecting models by p-values (specification searching inflates false positives)."),
+    ]
+
+    print()
+    for question, opt_a, opt_b in steps:
+        print(f"  {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  Clear, reproducible reporting builds credibility and enables replication.")
+    print("  The table in your paper should be code output, not a paste from a screen.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Summary Statistics Tables")
+    demo_summary_stats()
+
+    section("2. Regression Output Tables")
+    demo_regression_table()
+
+    section("3. Coefficient Plots")
+    demo_coefficient_plot()
+
+    section("4. Residual Diagnostic Plots")
+    demo_diagnostic_plots()
+
+    section("5. Model Comparison Tables")
+    demo_model_comparison()
+
+    section("6. Exporting Results")
+    demo_exporting()
+
+    section("7. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
