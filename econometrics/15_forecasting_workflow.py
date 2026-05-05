@@ -355,3 +355,139 @@ def demo_evaluation_metrics() -> None:
     print("  MASE < 1: model beats the naive baseline.")
     print("  Coverage should be close to 0.95 for a well-calibrated 95% CI.")
     print("  RMSE > MAE when there are large individual errors (squared penalty).")
+
+
+# ==============================================================
+# 6. Combining Forecasts
+# ==============================================================
+# Combining forecasts (ensembling) typically outperforms any single model.
+#
+#   Equal-weight combination: ŷ_comb = (1/M) * Σ ŷ_m
+#     Simple and surprisingly hard to beat in practice.
+#
+#   Optimal (Granger-Ramanathan) combination:
+#     Regress y on M model forecasts over a validation window.
+#     Estimated weights used for future forecasts.
+#     Pitfall: can overfit when validation window is short.
+#
+# Why combination works: errors across models are not perfectly correlated.
+# Averaging partially cancels model-specific errors (variance reduction).
+
+def demo_forecast_combination() -> None:
+    train = TRAIN_AR2
+    test  = TEST_AR2
+    h     = N_TEST
+
+    orders = [(1, 0, 0), (2, 0, 0), (0, 0, 1), (1, 0, 1)]
+    fcs    = {}
+    for order in orders:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            fcs[str(order)] = ARIMA(train, order=order).fit().get_forecast(h).predicted_mean.values
+    fcs["naive"] = np.full(h, train[-1])
+
+    equal_comb = np.column_stack(list(fcs.values())).mean(axis=1)
+
+    # Optimal combination via OLS on a validation split
+    val_size = 20
+    tr2, val = train[:-val_size], train[-val_size:]
+    val_fcs  = {}
+    for order in orders:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            val_fcs[str(order)] = ARIMA(tr2, order=order).fit().get_forecast(val_size).predicted_mean.values
+    X_val   = sm.add_constant(np.column_stack(list(val_fcs.values())))
+    opt_w   = sm.OLS(val, X_val).fit().params
+    X_test  = sm.add_constant(np.column_stack([fcs[str(o)] for o in orders]))
+    opt_comb = X_test @ opt_w
+
+    print(f"\n  Forecast combination on AR(2) series  (h={h})")
+    print()
+    print(f"  {'Model':>20} | {'RMSE':>8} | MAE")
+    print(f"  {'-'*20}-+-{'-'*8}-+-{'-'*8}")
+    for label, fc in fcs.items():
+        print(f"  {label:>20} | {rmse(test, fc):>8.4f} | {mae(test, fc):.4f}")
+    print(f"  {'Equal combination':>20} | {rmse(test, equal_comb):>8.4f} | {mae(test, equal_comb):.4f}")
+    print(f"  {'Optimal combination':>20} | {rmse(test, opt_comb):>8.4f} | {mae(test, opt_comb):.4f}")
+
+    print()
+    print("  Equal combination often reduces RMSE below any individual model.")
+    print("  Optimal combination can overfit when the validation window is short.")
+    print("  In practice, equal weights are a robust default starting point.")
+
+
+# ==============================================================
+# 7. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    steps = [
+        ("Step 1: Explore the series.",
+         "Plot the series; check for trend, seasonality, changing variance.",
+         "Run ADF/KPSS to determine integration order (d)."),
+
+        ("Step 2: Establish baselines.",
+         "Compute naive, drift, and seasonal naive; report MASE.",
+         "A model with MASE ≥ 1 is not useful -- revisit the specification."),
+
+        ("Step 3: Choose an evaluation strategy.",
+         "Use expanding or rolling window CV -- never random k-fold.",
+         "Match the CV horizon h to the real forecasting horizon needed."),
+
+        ("Step 4: Fit and select the model.",
+         "ARIMA: AIC/BIC grid search; verify Ljung-Box on residuals.",
+         "Trend + seasonality: use Holt-Winters or SARIMA(p,d,q)(P,D,Q)[s]."),
+
+        ("Step 5: Combine diverse models.",
+         "Average 3-5 models to reduce model-specific errors.",
+         "Equal weights usually suffice; optimal weights risk overfitting."),
+
+        ("Step 6: Report uncertainty.",
+         "Always include prediction intervals alongside point forecasts.",
+         "Verify 95% CI coverage is close to 0.95 on the test set."),
+
+        ("Common pitfalls:",
+         "Using in-sample R² or training RMSE to evaluate forecast quality.",
+         "Ignoring seasonality in quarterly or monthly economic data."),
+    ]
+
+    print()
+    for question, opt_a, opt_b in steps:
+        print(f"  {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  A reliable forecasting workflow needs baselines, CV, and uncertainty bounds.")
+    print("  Simplicity and robustness beat complexity in most applied settings.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Time Series Cross-Validation")
+    demo_ts_cross_validation()
+
+    section("2. Baseline Forecasts")
+    demo_baselines()
+
+    section("3. Exponential Smoothing")
+    demo_exponential_smoothing()
+
+    section("4. Automatic ARIMA Order Selection")
+    demo_auto_arima()
+
+    section("5. Forecast Evaluation Metrics")
+    demo_evaluation_metrics()
+
+    section("6. Combining Forecasts")
+    demo_forecast_combination()
+
+    section("7. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
