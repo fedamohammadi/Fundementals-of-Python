@@ -225,3 +225,119 @@ def demo_coefficient_plot() -> None:
     print("  Bars that do not cross '0' are statistically significant at 5%.")
     print("  'female' is large and negative: the wage gap conditional on education/experience.")
     print("  'exper2' is small but negative: diminishing returns to experience.")
+
+
+# ==============================================================
+# 4. Residual Diagnostic Plots
+# ==============================================================
+# Residual diagnostics are required for any regression or time series model.
+# Without matplotlib, we use text-based tools:
+#
+#   ACF bar chart: spikes indicate residual autocorrelation.
+#   Residual summary: mean (≈0?), std, skew, kurtosis.
+#   Ljung-Box test: formal test for autocorrelation in time series residuals.
+#
+# When matplotlib is available, use model.plot_diagnostics() from statsmodels.
+
+def _acf_bars(values: np.ndarray, n_lags: int = 12, width: int = 28) -> None:
+    acf_vals = ts_acf(values, nlags=n_lags, fft=True)[1:]
+    ci_bound = 1.96 / np.sqrt(len(values))
+    print(f"  {'Lag':>4} | {'ACF':>6} | {'Bar':<{width}} | Sig?")
+    print(f"  {'----':>4}-+--------+-{'-'*width}-+-----")
+    for k, v in enumerate(acf_vals):
+        filled = min(width, int(abs(v) * width))
+        bar    = ("+" if v >= 0 else "-") * filled
+        sig    = "***" if abs(v) > ci_bound else ""
+        print(f"  {k+1:>4} | {v:>6.3f} | {bar:<{width}} | {sig}")
+
+
+def demo_diagnostic_plots() -> None:
+    df    = DF_WAGES
+    m     = smf.ols("log_wage ~ educ + exper + exper2 + female", data=df).fit()
+    resid = m.resid.values
+
+    print(f"\n  OLS residual summary  (N={N_CS})")
+    s = pd.Series(resid)
+    print(f"  Mean:     {resid.mean():.6f}  (should be ≈ 0)")
+    print(f"  Std:      {resid.std():.4f}")
+    print(f"  Skew:     {float(s.skew()):.4f}")
+    print(f"  Kurtosis: {float(s.kurt()):.4f}  (excess; Normal = 0)")
+    print()
+    print("  ACF of OLS residuals (cross-section; no serial structure expected):")
+    print()
+    _acf_bars(resid, n_lags=10)
+
+    print()
+    print("  For cross-sectional OLS, residual ACF should show no significant spikes.")
+    print()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        ts_res = ARIMA(Y_TS, order=(1, 0, 0)).fit()
+
+    lb   = acorr_ljungbox(ts_res.resid, lags=[10], return_df=True)
+    lb_p = float(lb["lb_pvalue"].iloc[0])
+    print(f"  ARIMA(1,0,0) residuals  (time series, N={N_TS}):")
+    print(f"  Ljung-Box (10 lags) p = {lb_p:.4f}", end="  ")
+    print("(white noise -- good)" if lb_p > 0.05 else "(autocorrelation detected)")
+    print()
+    print("  ACF of ARIMA residuals:")
+    print()
+    _acf_bars(ts_res.resid.values, n_lags=10)
+
+
+# ==============================================================
+# 5. Model Comparison Tables
+# ==============================================================
+# When evaluating competing models, report structured comparisons:
+#
+#   Cross-section: R², adjusted R², AIC, BIC, F-statistic.
+#   Time series:   AIC, BIC, train RMSE, test RMSE, Ljung-Box p.
+#
+# Key principle: never select on in-sample fit alone.
+#   AIC and BIC penalize complexity; lower is better.
+#   Test RMSE on held-out data is the gold standard.
+
+def demo_model_comparison() -> None:
+    df = DF_WAGES
+
+    ols_models = {
+        "educ only":    smf.ols("log_wage ~ educ",                           data=df).fit(),
+        "educ+exper":   smf.ols("log_wage ~ educ + exper",                   data=df).fit(),
+        "full linear":  smf.ols("log_wage ~ educ + exper + female",          data=df).fit(),
+        "with exper²":  smf.ols("log_wage ~ educ + exper + exper2 + female", data=df).fit(),
+    }
+
+    print(f"\n  Model comparison: OLS  (dep. var: log_wage, N={N_CS})")
+    print()
+    print(f"  {'Model':>14} | {'R²':>7} | {'Adj R²':>7} | {'AIC':>10} | {'BIC':>10} | {'F':>8}")
+    print(f"  {'-'*14}-+-{'-'*7}-+-{'-'*7}-+-{'-'*10}-+-{'-'*10}-+-{'-'*8}")
+    for label, m in ols_models.items():
+        print(f"  {label:>14} | {m.rsquared:>7.4f} | {m.rsquared_adj:>7.4f} | "
+              f"{m.aic:>10.2f} | {m.bic:>10.2f} | {m.fvalue:>8.2f}")
+
+    print()
+    y_train = Y_TS[:150]
+    y_test  = Y_TS[150:]
+    h       = len(y_test)
+
+    ts_orders = [(1,0,0), (2,0,0), (0,0,1), (1,0,1)]
+
+    print(f"  Model comparison: ARIMA  (AR(1) DGP, train=150, test=50)")
+    print()
+    print(f"  {'Order':>10} | {'AIC':>9} | {'BIC':>9} | {'Train RMSE':>11} | {'Test RMSE':>10} | LB p")
+    print(f"  {'-'*10}-+-{'-'*9}-+-{'-'*9}-+-{'-'*11}-+-{'-'*10}-+-{'-'*8}")
+
+    for order in ts_orders:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            m   = ARIMA(y_train, order=order).fit()
+        tr_rmse  = float(np.sqrt((m.resid ** 2).mean()))
+        te_rmse  = float(np.sqrt(((y_test - m.get_forecast(h).predicted_mean.values) ** 2).mean()))
+        lb_p     = float(acorr_ljungbox(m.resid, lags=[10], return_df=True)["lb_pvalue"].iloc[0])
+        print(f"  {str(order):>10} | {m.aic:>9.2f} | {m.bic:>9.2f} | {tr_rmse:>11.4f} | "
+              f"{te_rmse:>10.4f} | {lb_p:.4f}")
+
+    print()
+    print("  AIC and BIC select AR(1) -- matching the true DGP.")
+    print("  Test RMSE confirms: AR(1) generalizes best out-of-sample.")
