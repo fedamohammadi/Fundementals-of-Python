@@ -99,3 +99,129 @@ def demo_summary_stats() -> None:
     print("  log_wage: log of hourly wage in dollars.")
     print(f"  female: fraction female = {df['female'].mean():.2f}.")
     print("  Quick one-liner: df.describe().T  (includes quartiles).")
+
+
+# ==============================================================
+# 2. Regression Output Tables
+# ==============================================================
+# Applied econometrics tables show:
+#   - Coefficient estimate and SE per variable, one model per column.
+#   - Significance stars (* p<.10  ** p<.05  *** p<.01).
+#   - Bottom rows: N, R², adjusted R², F-statistic.
+#
+# Incrementally adding controls (M1 → M4) reveals:
+#   - How coefficients change as confounders are included.
+#   - Whether results are stable (robustness to specification).
+
+def _stars(p: float) -> str:
+    if p < 0.01: return "***"
+    if p < 0.05: return "**"
+    if p < 0.10: return "*"
+    return ""
+
+
+def _reg_table(models: dict, var_order: list, dec: int = 3) -> None:
+    cols = list(models.keys())
+    hdr  = f"  {'Variable':>14}" + "".join(f" | {m:>13}" for m in cols)
+    sep  = "  " + "-" * 14 + ("+-" + "-" * 13) * len(cols)
+    print(hdr)
+    print(sep)
+
+    for var in var_order:
+        row_b  = f"  {var:>14}"
+        row_se = f"  {'':>14}"
+        for m in models.values():
+            if var in m.params.index:
+                b  = m.params[var]
+                se = m.bse[var]
+                s  = _stars(m.pvalues[var])
+                row_b  += f" | {f'{b:.{dec}f}{s}':>13}"
+                row_se += f" | {'(' + f'{se:.{dec}f}' + ')':>13}"
+            else:
+                row_b  += f" | {'':>13}"
+                row_se += f" | {'':>13}"
+        print(row_b)
+        print(row_se)
+
+    print(sep)
+    for stat, attr in [("N", "nobs"), ("R²", "rsquared"), ("Adj. R²", "rsquared_adj"), ("F-stat", "fvalue")]:
+        row = f"  {stat:>14}"
+        for m in models.values():
+            val = getattr(m, attr)
+            if stat == "N":
+                row += f" | {int(val):>13}"
+            elif stat == "F-stat":
+                row += f" | {val:>13.2f}"
+            else:
+                row += f" | {val:>13.4f}"
+        print(row)
+
+
+def demo_regression_table() -> None:
+    df = DF_WAGES
+    models = {
+        "M1": smf.ols("log_wage ~ educ",                              data=df).fit(),
+        "M2": smf.ols("log_wage ~ educ + exper",                      data=df).fit(),
+        "M3": smf.ols("log_wage ~ educ + exper + exper2",             data=df).fit(),
+        "M4": smf.ols("log_wage ~ educ + exper + exper2 + female",    data=df).fit(),
+    }
+    var_order = ["Intercept", "educ", "exper", "exper2", "female"]
+
+    print(f"\n  Regression table: dependent variable = log_wage")
+    print(f"  Significance: * p<.10  ** p<.05  *** p<.01  |  SE in parentheses")
+    print()
+    _reg_table(models, var_order)
+    print()
+    print("  M4 is the full model (true: educ=0.08, exper=0.05, female=0.30).")
+    print("  R² increases as controls are added; female has a large negative gap.")
+    print("  exper2 captures a nonlinear (concave) experience-wage profile.")
+
+
+# ==============================================================
+# 3. Coefficient Plots
+# ==============================================================
+# A coefficient plot displays estimates with confidence intervals.
+# More informative than a table when comparing many variables or models.
+#
+# Text-based implementation:
+#   We map [lo, b, hi] onto a fixed-width character axis.
+#   '[' marks the lower CI, '|' the point estimate, ']' the upper CI.
+#   '0' marks the zero line; bars to the right of 0 are positive effects.
+
+def _coef_plot_text(params: pd.Series, ci: pd.DataFrame,
+                    width: int = 44, exclude: list = None) -> None:
+    exclude = exclude or ["Intercept"]
+    rows    = [(v, params[v], ci.loc[v, 0], ci.loc[v, 1])
+               for v in params.index if v not in exclude]
+    lo_min  = min(r[2] for r in rows)
+    hi_max  = max(r[3] for r in rows)
+    span    = hi_max - lo_min if hi_max != lo_min else 1.0
+    zero_p  = int((-lo_min / span) * width)
+
+    for var, b, lo, hi in rows:
+        lo_p  = max(0, int(((lo - lo_min) / span) * width))
+        b_p   = min(width, int(((b  - lo_min) / span) * width))
+        hi_p  = min(width, int(((hi - lo_min) / span) * width))
+        bar   = [" "] * (width + 1)
+        for i in range(lo_p, hi_p + 1):
+            bar[i] = "-"
+        if 0 <= lo_p <= width: bar[lo_p] = "["
+        if 0 <= hi_p <= width: bar[hi_p] = "]"
+        if 0 <= b_p  <= width: bar[b_p]  = "|"
+        if 0 <= zero_p <= width: bar[zero_p] = "0" if bar[zero_p] == " " else bar[zero_p]
+        print(f"  {var:>10}: {''.join(bar)}  {b:+.3f}")
+
+
+def demo_coefficient_plot() -> None:
+    df = DF_WAGES
+    m  = smf.ols("log_wage ~ educ + exper + exper2 + female", data=df).fit()
+    ci = m.conf_int()
+
+    print(f"\n  Coefficient plot: log_wage ~ educ + exper + exper2 + female")
+    print(f"  [ --- | --- ] = 95% CI; '|' = point estimate; '0' = zero line")
+    print()
+    _coef_plot_text(m.params, ci, width=44, exclude=["Intercept"])
+    print()
+    print("  Bars that do not cross '0' are statistically significant at 5%.")
+    print("  'female' is large and negative: the wage gap conditional on education/experience.")
+    print("  'exper2' is small but negative: diminishing returns to experience.")
