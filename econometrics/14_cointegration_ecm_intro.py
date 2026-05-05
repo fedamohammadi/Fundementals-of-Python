@@ -199,3 +199,102 @@ def demo_johansen_test() -> None:
         for i, (stat, cv) in enumerate(zip(result.test_stats, result.crit_vals)):
             decision = "reject H0" if stat > cv else "fail to reject"
             print(f"  {'rank ≤ '+str(i):>10} | {stat:>12.4f} | {cv:>8.4f} | {decision}")
+
+
+# ==============================================================
+# 4. The Error Correction Model
+# ==============================================================
+# Granger Representation Theorem: if x and y are cointegrated, there exists:
+#
+#   Δy_t = c + α*(y_{t-1} - β*x_{t-1}) + γ*Δy_{t-1} + δ*Δx_{t-1} + eps_t
+#
+# Components:
+#   (y_{t-1} - β*x_{t-1})  = equilibrium error (the I(0) EC term)
+#   α                       = speed of adjustment (must be < 0 for stability)
+#   γ, δ                    = short-run dynamics
+#
+# Engle-Granger two-step ECM estimation:
+#   Step 1: regress y on x in levels -> get residuals z_hat.
+#   Step 2: regress Δy on z_hat_{t-1} and Δx.
+
+def demo_ecm_concept() -> None:
+    df       = make_cointegrated()
+    res_lr   = sm.OLS(df["y"], sm.add_constant(df["x"])).fit()
+    beta_est = res_lr.params["x"]
+    ec_term  = (df["y"] - beta_est * df["x"]).values
+
+    dy     = np.diff(df["y"].values)
+    dx     = np.diff(df["x"].values)
+    ec_lag = ec_term[:-1]
+
+    ecm_df  = pd.DataFrame({"dy": dy, "dx": dx, "ec": ec_lag})
+    res_ecm = smf.ols("dy ~ ec + dx", data=ecm_df).fit()
+    alpha_est = res_ecm.params["ec"]
+
+    print(f"\n  ECM: Δy_t = c + α*(y_{{t-1}} - β*x_{{t-1}}) + δ*Δx_t + eps_t")
+    print()
+    print(f"  Step 1 (long-run OLS): y ~ x")
+    print(f"    Estimated beta: {beta_est:.4f}  (true = {BETA:.1f})")
+    print()
+    print(f"  Step 2 (ECM): Δy ~ ec_lag + Δx")
+    print()
+    print(f"  {'Parameter':>12} | {'Estimate':>10} | {'SE':>8} | {'t':>7} | p-value")
+    print(f"  {'-'*12}-+-{'-'*10}-+-{'-'*8}-+-{'-'*7}-+-{'-'*8}")
+    for name, key in [("const", "Intercept"), ("alpha (ec)", "ec"), ("delta (Δx)", "dx")]:
+        if key in res_ecm.params.index:
+            b = res_ecm.params[key]
+            se = res_ecm.bse[key]
+            t  = res_ecm.tvalues[key]
+            p  = res_ecm.pvalues[key]
+            print(f"  {name:>12} | {b:>10.4f} | {se:>8.4f} | {t:>7.3f} | {p:.4f}")
+
+    print()
+    print(f"  True alpha = {ALPHA_ECM:.1f},  estimated = {alpha_est:.4f}")
+    print()
+    print(f"  Interpretation of alpha = {alpha_est:.3f}:")
+    print(f"    When y is 1 unit ABOVE equilibrium, it falls by {abs(alpha_est):.3f} next period.")
+    print(f"    Approx. {int(round(1/abs(alpha_est)))} periods to close the gap fully.")
+
+
+# ==============================================================
+# 5. Estimating ECM with statsmodels VECM
+# ==============================================================
+# For multivariate systems, use statsmodels VECM for correct inference.
+# VECM handles multiple cointegrating vectors and gives valid standard errors.
+#
+# VECM(endog, k_ar_diff, coint_rank, deterministic)
+#   endog:       array (T × k), all I(1) variables.
+#   k_ar_diff:   lags of differences (= VAR order minus 1).
+#   coint_rank:  r from Johansen test.
+#   deterministic: "ci" = constant inside cointegrating relation (most common).
+#
+# Key output:
+#   beta  = cointegrating vectors (normalized)
+#   alpha = adjustment coefficients (negative = error-correcting)
+#   gamma = short-run dynamics
+
+def demo_vecm() -> None:
+    df = make_cointegrated()[["x", "y"]]
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        result = VECM(df.values, k_ar_diff=2, coint_rank=1, deterministic="ci").fit()
+
+    print(f"\n  VECM estimation  (bivariate, rank=1, k_ar_diff=2)")
+    print()
+    beta  = result.beta
+    alpha = result.alpha
+    print("  Cointegrating vector beta (normalized on x):")
+    print(f"    beta = {beta.flatten()}")
+    print(f"    Equilibrium: x + ({beta[1,0]:.4f}) * y = 0")
+    print(f"    Equivalently: y = {-1/beta[1,0]:.4f} * x  (true coefficient = {BETA:.1f})")
+    print()
+    print("  Adjustment coefficients alpha:")
+    for i, lbl in enumerate(["x", "y"]):
+        direction = "error-correcting" if alpha[i, 0] < 0 else "destabilizing"
+        print(f"    alpha_{lbl} = {alpha[i, 0]:.4f}  ({direction})")
+    print()
+    print(f"  AIC = {result.aic:.2f}   BIC = {result.bic:.2f}")
+    print()
+    print("  At least one alpha must be negative for the system to be stable.")
+    print("  alpha ≈ 0 means that variable is weakly exogenous (drives long-run).")
