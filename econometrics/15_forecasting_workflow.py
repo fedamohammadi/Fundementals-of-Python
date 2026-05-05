@@ -237,3 +237,121 @@ def demo_exponential_smoothing() -> None:
     print("  Holt-Winters captures trend and seasonality; outperforms SES here.")
     print("  SES is optimal for random walks without trend -- misspecified for this data.")
     print("  MASE < 1 confirms Holt-Winters beats the naive baseline.")
+
+
+# ==============================================================
+# 4. Automatic ARIMA Order Selection
+# ==============================================================
+# Choosing (p, d, q) from ACF/PACF by hand is subjective.
+# A systematic approach: grid search over candidate orders, select by AIC.
+#
+# Algorithm:
+#   1. Determine d: ADF test; increment until stationary.
+#   2. Fit ARIMA(p, d, q) for p, q in {0 ... max_p/max_q}.
+#   3. Select the order with minimum AIC (or BIC for parsimony).
+#   4. Verify residuals: Ljung-Box p > 0.05 = white noise.
+#
+# pmdarima (Python port of R's auto.arima) automates this end-to-end.
+# Below we implement the grid search manually to illustrate the logic.
+
+def demo_auto_arima() -> None:
+    train = TRAIN_AR2
+    d     = 0 if adfuller(train, autolag="AIC")[1] < 0.05 else 1
+
+    rows = []
+    for p in range(4):
+        for q in range(4):
+            if p == 0 and q == 0:
+                continue
+            try:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    res = ARIMA(train, order=(p, d, q)).fit()
+                rows.append((p, d, q, res.aic, res.bic))
+            except Exception:
+                pass
+
+    rows.sort(key=lambda r: r[3])
+    best_order = rows[0][:3]
+
+    print(f"\n  Auto ARIMA grid search on AR(2) series  (true order = (2,0,0))")
+    print(f"  Determined d = {d} from ADF test; grid: p,q ∈ {{0..3}}")
+    print()
+    print(f"  {'Order':>12} | {'AIC':>10} | {'BIC':>10}")
+    print(f"  {'-'*12}-+-{'-'*10}-+-{'-'*10}")
+    for p, dv, q, aic, bic in rows[:6]:
+        flag = " <-- best AIC" if (p, dv, q) == best_order else ""
+        print(f"  {f'({p},{dv},{q})':>12} | {aic:>10.3f} | {bic:>10.3f}{flag}")
+
+    print()
+    print(f"  Best order by AIC: ARIMA{best_order}  (true DGP: ARIMA(2,0,0))")
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res_best = ARIMA(train, order=best_order).fit()
+    lb   = acorr_ljungbox(res_best.resid, lags=[10], return_df=True)
+    lb_p = float(lb["lb_pvalue"].iloc[0])
+    print(f"  Ljung-Box p (10 lags): {lb_p:.4f}  ",
+          end="")
+    print("(residuals OK)" if lb_p > 0.05 else "(autocorrelation remains -- respecify)")
+
+
+# ==============================================================
+# 5. Forecast Evaluation Metrics
+# ==============================================================
+# Point forecast accuracy:
+#
+#   RMSE = sqrt(mean((y - ŷ)²))
+#     Penalizes large errors heavily; scale-dependent.
+#
+#   MAE = mean(|y - ŷ|)
+#     Robust to outliers; scale-dependent.
+#
+#   MASE = MAE / MAE_naive  (Hyndman & Koehler 2006)
+#     Scale-free; MASE < 1 means model beats naive baseline.
+#     Preferred for comparing across series.
+#
+# Interval forecast accuracy:
+#   Coverage: fraction of actuals inside the nominal 95% CI.
+#     A well-calibrated model should have coverage ≈ 0.95.
+#   Winkler score: penalizes wide intervals and missed observations.
+
+def demo_evaluation_metrics() -> None:
+    train = TRAIN_AR2
+    test  = TEST_AR2
+    h     = N_TEST
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        res_ar2 = ARIMA(train, order=(2, 0, 0)).fit()
+        res_rw  = ARIMA(train, order=(0, 1, 0)).fit()
+
+    fc_ar2   = res_ar2.get_forecast(steps=h)
+    fc_rw    = res_rw.get_forecast(steps=h)
+    naive_fc = np.full(h, train[-1])
+
+    print(f"\n  Forecast evaluation  (AR(2) series, h={h})")
+    print()
+    print(f"  {'Model':>14} | {'RMSE':>8} | {'MAE':>8} | {'MASE':>8} | 95% coverage")
+    print(f"  {'-'*14}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}-+-{'-'*13}")
+
+    for label, fc_obj, fc_mean in [
+        ("AR(2)",    fc_ar2, fc_ar2.predicted_mean.values),
+        ("RW (d=1)", fc_rw,  fc_rw.predicted_mean.values),
+        ("Naive",    None,   naive_fc),
+    ]:
+        r  = rmse(test, fc_mean)
+        m  = mae(test, fc_mean)
+        ms = mase(test, fc_mean, train)
+        if fc_obj is not None:
+            ci      = fc_obj.conf_int(alpha=0.05).values
+            in_ci   = ((test >= ci[:, 0]) & (test <= ci[:, 1])).mean()
+            cov_str = f"{in_ci:.3f}"
+        else:
+            cov_str = "N/A"
+        print(f"  {label:>14} | {r:>8.4f} | {m:>8.4f} | {ms:>8.4f} | {cov_str}")
+
+    print()
+    print("  MASE < 1: model beats the naive baseline.")
+    print("  Coverage should be close to 0.95 for a well-calibrated 95% CI.")
+    print("  RMSE > MAE when there are large individual errors (squared penalty).")
