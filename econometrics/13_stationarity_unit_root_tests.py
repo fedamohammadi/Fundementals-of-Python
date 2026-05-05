@@ -352,3 +352,81 @@ def demo_seasonal_integration() -> None:
     print()
     print("  If Δ₄y is stationary but Δy is not, use SARIMA(p,d,q)(P,D,Q)[4].")
     print("  Adding a seasonal difference (D=1) removes the seasonal stochastic trend.")
+
+
+# ==============================================================
+# 7. Practical Decision Framework
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    steps = [
+        ("Step 1: Plot the series.",
+         "Look for drift, growing variance, or seasonal swings.",
+         "A drifting or expanding series is likely non-stationary."),
+
+        ("Step 2: Run ADF with the right specification.",
+         "No visible trend -> use 'c'.  Visible trend -> use 'ct'.",
+         "Non-stationary under 'c' but stationary under 'ct' = trend-stationary."),
+
+        ("Step 3: Confirm with KPSS (reversed null).",
+         "ADF rejects AND KPSS fails to reject -> stationary; proceed.",
+         "Both point to unit root -> first-difference and retest."),
+
+        ("Step 4: Choose detrending vs. differencing.",
+         "Stochastic trend (I(1)): first-difference (set d=1 in ARIMA).",
+         "Deterministic trend: regress on time and model OLS residuals."),
+
+        ("Step 5: Handle seasonality.",
+         "Check ACF at seasonal lags after regular differencing.",
+         "Persistent seasonal ACF -> add seasonal differencing (D=1 in SARIMA)."),
+
+        ("Step 6: Document results.",
+         "Report ADF stat, p-value, lag order used, and regression specification.",
+         "Note when tests conflict; run sensitivity checks under alternative specs."),
+
+        ("Common mistakes:",
+         "Relying on only one test (ADF alone has low power in small samples).",
+         "Assuming all macro series are I(1) without testing."),
+    ]
+
+    print()
+    for question, opt_a, opt_b in steps:
+        print(f"  {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  Stationarity testing is the prerequisite for ARIMA, cointegration,")
+    print("  and most time series estimators.  Misclassifying the integration order")
+    print("  invalidates all downstream inference.  Test carefully.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Unit Roots and Integration Orders")
+    demo_integration_orders()
+
+    section("2. Augmented Dickey-Fuller Test")
+    demo_adf_test()
+
+    section("3. KPSS Test")
+    demo_kpss_test()
+
+    section("4. Phillips-Perron Test")
+    demo_pp_test()
+
+    section("5. Deterministic vs. Stochastic Trends")
+    demo_deterministic_vs_stochastic()
+
+    section("6. Seasonal Integration")
+    demo_seasonal_integration()
+
+    section("7. Practical Decision Framework")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
