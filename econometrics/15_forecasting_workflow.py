@@ -135,3 +135,105 @@ def demo_ts_cross_validation() -> None:
     print()
     print("  AR(2) CV MAE is lowest -- it matches the true data-generating process.")
     print("  Never use standard k-fold CV on time series; it leaks future data.")
+
+
+# ==============================================================
+# 2. Baseline Forecasts
+# ==============================================================
+# Simple baselines are essential benchmarks.  A model that cannot beat
+# a naive baseline is not useful in practice.
+#
+#   Naive: ŷ_{T+h} = y_T  (last observed value)
+#     Optimal for I(1) (random walk) series.
+#
+#   Drift: ŷ_{T+h} = y_T + h*(y_T - y_1)/(T-1)
+#     Extrapolates the average historical trend.
+#
+#   Seasonal naive: ŷ_{T+h} = y_{T+h-s}  (last season's value)
+#     Optimal for seasonal random walks.
+#
+#   Moving average (window w): ŷ_{T+h} = mean of last w observations.
+#     Smooths noise; good when there is no strong trend or seasonality.
+
+def demo_baselines() -> None:
+    train = TRAIN_SEAS
+    test  = TEST_SEAS
+    h     = N_TEST
+    T     = len(train)
+
+    naive_fc = np.full(h, train[-1])
+    drift_fc = train[-1] + np.arange(1, h + 1) * (train[-1] - train[0]) / (T - 1)
+    seas_fc  = np.array([train[T - SEAS_PER + (i % SEAS_PER)] for i in range(h)])
+    ma5_fc   = np.full(h, train[-5:].mean())
+
+    print(f"\n  Baseline forecasts on seasonal trend series  (h={h})")
+    print(f"  Train N={N_TRAIN}, Test N={N_TEST}")
+    print()
+    print(f"  {'Method':>18} | {'RMSE':>8} | {'MAE':>8} | MASE")
+    print(f"  {'-'*18}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}")
+
+    for label, fc in [("Naive",          naive_fc),
+                       ("Drift",          drift_fc),
+                       ("Seasonal naive", seas_fc),
+                       ("Moving avg (5)", ma5_fc)]:
+        print(f"  {label:>18} | {rmse(test, fc):>8.4f} | {mae(test, fc):>8.4f} | "
+              f"{mase(test, fc, train):.4f}")
+
+    print()
+    print("  Seasonal naive performs best here -- it captures the seasonal pattern.")
+    print("  MASE < 1 means the model beats the naive (last-value) baseline.")
+    print("  Always compare against at least one baseline before reporting results.")
+
+
+# ==============================================================
+# 3. Exponential Smoothing
+# ==============================================================
+# ETS (Error-Trend-Seasonality) models weight past observations exponentially.
+#
+#   Simple ES (SES):  level only; alpha controls smoothing.
+#     Optimal forecast for I(1) with no trend or seasonality.
+#
+#   Holt's linear (double ES):  level + linear trend.
+#     Parameters: alpha (level), beta (trend smoothing).
+#
+#   Holt-Winters:  level + trend + seasonality.
+#     Additional parameter: gamma (seasonal smoothing).
+#     Additive: seasonal effect is constant in magnitude.
+#     Multiplicative: seasonal effect scales with level.
+#
+# Parameters are estimated by minimizing SSE (or MLE).
+
+def demo_exponential_smoothing() -> None:
+    train = TRAIN_SEAS
+    test  = TEST_SEAS
+    h     = N_TEST
+
+    models = [
+        ("SES",               dict(trend=None, seasonal=None)),
+        ("Holt linear",       dict(trend="add", seasonal=None)),
+        ("HW additive",       dict(trend="add", seasonal="add",
+                                   seasonal_periods=SEAS_PER)),
+        ("HW multiplicative", dict(trend="add", seasonal="mul",
+                                   seasonal_periods=SEAS_PER)),
+    ]
+
+    print(f"\n  Exponential smoothing on seasonal trend series  (h={h})")
+    print()
+    print(f"  {'Model':>22} | {'RMSE':>8} | {'MAE':>8} | MASE")
+    print(f"  {'-'*22}-+-{'-'*8}-+-{'-'*8}-+-{'-'*8}")
+
+    for label, kwargs in models:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                m  = ExponentialSmoothing(train, **kwargs).fit(optimized=True)
+                fc = m.forecast(h)
+                print(f"  {label:>22} | {rmse(test, fc):>8.4f} | {mae(test, fc):>8.4f} | "
+                      f"{mase(test, fc, train):.4f}")
+            except Exception as e:
+                print(f"  {label:>22} | error: {e}")
+
+    print()
+    print("  Holt-Winters captures trend and seasonality; outperforms SES here.")
+    print("  SES is optimal for random walks without trend -- misspecified for this data.")
+    print("  MASE < 1 confirms Holt-Winters beats the naive baseline.")
