@@ -110,3 +110,92 @@ def demo_cointegration_concept() -> None:
     print("  Both pairs can show high correlation -- that is not sufficient.")
     print("  Only the cointegrated pair has a stationary spread (true long-run link).")
     print("  High R² between two I(1) series does NOT imply cointegration.")
+
+
+# ==============================================================
+# 2. Engle-Granger Two-Step Procedure
+# ==============================================================
+# The Engle-Granger (1987) test for cointegration:
+#
+# Step 1: Estimate the long-run relationship by OLS:
+#   y_t = alpha + beta * x_t + z_hat_t
+#
+# Step 2: Test whether z_hat_t is I(0) using ADF.
+#   H0: no cointegration (z_hat has a unit root).
+#   statsmodels.tsa.stattools.coint() wraps this test.
+#   Critical values are more negative than standard ADF (estimated residuals
+#   lose one degree of freedom per variable in the cointegrating regression).
+#
+# Limitations:
+#   - Only identifies one cointegrating vector.
+#   - Results can depend on which variable is the LHS.
+#   - For three or more variables, use the Johansen test.
+
+def demo_engle_granger() -> None:
+    df_coint = make_cointegrated()
+    df_indep  = make_independent_rw()
+
+    print(f"\n  Engle-Granger two-step cointegration test")
+    print()
+    print(f"  {'Dataset':>20} | {'OLS beta':>9} | {'EG stat':>9} | {'p-value':>9} | Conclusion")
+    print(f"  {'-'*20}-+-{'-'*9}-+-{'-'*9}-+-{'-'*9}-+-{'-'*15}")
+
+    for label, df in [("Cointegrated", df_coint), ("Independent RWs", df_indep)]:
+        res      = sm.OLS(df["y"], sm.add_constant(df["x"])).fit()
+        beta_hat = res.params["x"]
+        eg_stat, eg_pval, _ = coint(df["y"], df["x"])
+        verdict  = "cointegrated" if eg_pval < 0.05 else "NOT cointegrated"
+        print(f"  {label:>20} | {beta_hat:>9.4f} | {eg_stat:>9.4f} | {eg_pval:>9.4f} | {verdict}")
+
+    print()
+    print(f"  True beta = {BETA:.1f}")
+    df = make_cointegrated()
+    res = sm.OLS(df["y"], sm.add_constant(df["x"])).fit()
+    print(f"  OLS beta_hat = {res.params['x']:.4f}  (super-consistent; faster than 1/sqrt(N))")
+    print(f"  OLS t-stat p = {res.pvalues['x']:.4f}  WARNING: invalid -- use EG test instead")
+    print()
+    print("  EG critical values are more negative than standard ADF because")
+    print("  residuals are estimated (not observed), shifting the distribution.")
+
+
+# ==============================================================
+# 3. Johansen Test
+# ==============================================================
+# The Johansen test handles multivariate systems and identifies the
+# number of cointegrating vectors (the cointegrating rank r).
+#
+# The VECM representation:
+#   ΔY_t = Π Y_{t-1} + Γ_1 ΔY_{t-1} + ... + Γ_{k-1} ΔY_{t-k+1} + eps_t
+#   Π = αβ'  where β = cointegrating vectors, α = adjustment coefficients.
+#
+# Two test statistics:
+#   Trace:   H0: rank(Π) ≤ r  vs H1: rank > r   (tests jointly)
+#   Max-λ:   H0: rank(Π) = r  vs H1: rank = r+1  (tests one at a time)
+#
+# Procedure: start with r=0, increase until H0 is not rejected.
+#   r=0: no long-run relation -> use VAR in first differences.
+#   0 < r < k: use VECM with that rank.
+#   r=k: all series are I(0) -> no cointegration needed.
+
+def demo_johansen_test() -> None:
+    df_coint = make_cointegrated()[["x", "y"]]
+    df_vec   = make_vecm_data()
+
+    for label, df, true_rank in [
+        ("Bivariate cointegrated (true rank=1)", df_coint, 1),
+        ("Trivariate, one common trend (true rank=1)", df_vec, 1),
+    ]:
+        print(f"\n  Johansen trace test: {label}")
+        print(f"  (k_ar_diff=2, deterministic='ci')")
+        print()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            result = select_coint_rank(df.values, det_order=0, k_ar_diff=2,
+                                       method="trace", signif=0.05)
+        print(f"  Selected rank = {result.rank}  (true rank = {true_rank})")
+        print()
+        print(f"  {'H0':>10} | {'Trace stat':>12} | {'5% CV':>8} | Decision")
+        print(f"  {'-'*10}-+-{'-'*12}-+-{'-'*8}-+-{'-'*12}")
+        for i, (stat, cv) in enumerate(zip(result.test_stats, result.crit_vals)):
+            decision = "reject H0" if stat > cv else "fail to reject"
+            print(f"  {'rank ≤ '+str(i):>10} | {stat:>12.4f} | {cv:>8.4f} | {decision}")
