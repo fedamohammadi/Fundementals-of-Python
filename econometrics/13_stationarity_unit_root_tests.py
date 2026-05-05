@@ -157,3 +157,103 @@ def demo_adf_test() -> None:
     print()
     print("  Trend-stationary series fails the 'c' ADF but passes 'ct'.")
     print("  Always use 'ct' when the series shows a clear upward or downward drift.")
+
+
+# ==============================================================
+# 3. KPSS Test
+# ==============================================================
+# KPSS (Kwiatkowski-Phillips-Schmidt-Shin, 1992) reverses the hypothesis:
+#   H0: series is stationary.
+#   H1: series has a unit root.
+#
+# Combining ADF and KPSS gives stronger evidence than either alone:
+#   ADF rejects AND KPSS fails to reject  ->  stationary (strong evidence)
+#   ADF fails to reject AND KPSS rejects  ->  unit root (strong evidence)
+#   Both reject OR both fail to reject    ->  conflicting; investigate further
+#
+# KPSS stat is based on partial sums of OLS residuals; large values = non-stationary.
+
+def demo_kpss_test() -> None:
+    series = {
+        "I(0) AR(1)":       make_i0(),
+        "I(1) random walk": make_i1(),
+        "Trend-stat.":      make_trend_stationary(),
+    }
+
+    print(f"\n  KPSS test  (H0: stationary, H1: unit root)")
+    print()
+    print(f"  {'Series':>20} | {'Spec':>4} | {'Stat':>8} | {'5% CV':>8} | Verdict")
+    print(f"  {'-'*20}-+-{'-'*4}-+-{'-'*8}-+-{'-'*8}-+-{'-'*22}")
+
+    for label, y in series.items():
+        for reg in ["c", "ct"]:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                stat, pval, lags, crits = kpss(y, regression=reg, nlags="auto")
+            cv5     = crits["5%"]
+            rejects = stat > cv5
+            verdict = "unit root (reject H0)" if rejects else "stationary"
+            print(f"  {label:>20} | {reg:>4} | {stat:>8.4f} | {cv5:>8.4f} | {verdict}")
+
+    print()
+    print("  ADF vs KPSS decision matrix:")
+    print(f"  {'ADF':>18} | {'KPSS':>18} | Conclusion")
+    print(f"  {'-'*18}-+-{'-'*18}-+-{'-'*25}")
+    for adf, kps, concl in [
+        ("rejects H0",      "fails to reject", "stationary (strong)"),
+        ("fails to reject", "rejects H0",      "unit root (strong)"),
+        ("rejects H0",      "rejects H0",      "conflicting -- investigate"),
+        ("fails to reject", "fails to reject", "conflicting -- investigate"),
+    ]:
+        print(f"  {adf:>18} | {kps:>18} | {concl}")
+
+
+# ==============================================================
+# 4. Phillips-Perron Test
+# ==============================================================
+# The Phillips-Perron (PP) test shares the same H0/H1 as ADF but uses a
+# nonparametric HAC correction instead of augmenting with lagged differences.
+#
+# Advantage: no need to choose augmenting lags; robust to MA errors.
+# Disadvantage: worse size distortions in small samples.
+#
+# statsmodels lacks a built-in PP implementation, so we approximate it
+# via OLS on Δy_t ~ y_{t-1} with HAC (Newey-West) standard errors.
+# The t-stat on y_{t-1} is the PP-type statistic.
+
+def _pp_tstat(y: np.ndarray, trend: str = "c") -> float:
+    """Return HAC-corrected t-stat for the unit-root coefficient."""
+    n   = len(y)
+    dy  = np.diff(y)
+    yl  = y[:-1]
+    if trend == "c":
+        X = sm.add_constant(yl)
+    else:
+        X = np.column_stack([np.ones(len(yl)), np.arange(len(yl)), yl])
+    max_lag = int(4 * (n / 100) ** 0.25)
+    res = sm.OLS(dy, X).fit(cov_type="HAC", cov_kwds={"maxlags": max_lag})
+    return float(res.tvalues[-1])
+
+
+def demo_pp_test() -> None:
+    series = {
+        "I(0) AR(1)":       make_i0(),
+        "I(1) random walk": make_i1(),
+    }
+
+    print(f"\n  Phillips-Perron test  (HAC-corrected DF, H0: unit root)")
+    print()
+    print(f"  {'Series':>20} | {'ADF stat':>10} | {'ADF p':>7} | {'PP t-stat':>10} | PP verdict")
+    print(f"  {'-'*20}-+-{'-'*10}-+-{'-'*7}-+-{'-'*10}-+-{'-'*15}")
+
+    for label, y in series.items():
+        adf_stat, adf_p = adfuller(y, regression="c", autolag="AIC")[:2]
+        pp_t = _pp_tstat(y, trend="c")
+        pp_verdict = "stationary" if pp_t < -2.86 else "unit root"
+        print(f"  {label:>20} | {adf_stat:>10.4f} | {adf_p:>7.4f} | {pp_t:>10.4f} | {pp_verdict}")
+
+    print()
+    print("  PP and ADF should agree in most cases.")
+    print("  Prefer PP when data are seasonally adjusted (likely MA errors).")
+    print("  Prefer ADF in small samples with well-motivated lag choice.")
+    print("  If they disagree, use KPSS as a tiebreaker.")
