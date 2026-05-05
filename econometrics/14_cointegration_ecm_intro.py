@@ -298,3 +298,131 @@ def demo_vecm() -> None:
     print()
     print("  At least one alpha must be negative for the system to be stable.")
     print("  alpha ≈ 0 means that variable is weakly exogenous (drives long-run).")
+
+
+# ==============================================================
+# 6. Interpreting Cointegration Results
+# ==============================================================
+# Common mistakes and correct interpretations:
+#
+# 1. High R² between I(1) series ≠ cointegration.  Test residuals.
+# 2. OLS standard errors on cointegrated levels are NOT valid.
+#    Use DOLS (Dynamic OLS) or FMOLS for inference on beta.
+# 3. Cointegration ≠ causation.  Two series driven by a common trend
+#    may be cointegrated without either causing the other.
+# 4. alpha sign: at least one alpha < 0 is required for stability.
+#    Both non-zero -> both variables adjust; one ≈ 0 -> weakly exogenous.
+#
+# DOLS adds leads and lags of Δx to the static OLS regression,
+# removing endogeneity bias and enabling valid inference on beta.
+
+def demo_interpretation() -> None:
+    df = make_cointegrated()
+
+    res_ols  = sm.OLS(df["y"], sm.add_constant(df["x"])).fit()
+    eg_stat, eg_pval, _ = coint(df["y"], df["x"])
+
+    df2         = df.copy()
+    df2["dx"]   = df2["x"].diff()
+    df2["dx_l"] = df2["dx"].shift(1)
+    df2["dx_f"] = df2["dx"].shift(-1)
+    df2         = df2.dropna()
+    res_dols    = sm.OLS(df2["y"],
+                         sm.add_constant(df2[["x", "dx_l", "dx_f"]])).fit(
+                         cov_type="HAC", cov_kwds={"maxlags": 4})
+
+    print(f"\n  OLS vs. DOLS inference on the cointegrating coefficient")
+    print(f"  True beta = {BETA:.1f}")
+    print()
+    print(f"  {'Method':>8} | {'beta_hat':>9} | {'SE':>8} | {'95% CI':>20} | Note")
+    print(f"  {'-'*8}-+-{'-'*9}-+-{'-'*8}-+-{'-'*20}-+-{'-'*18}")
+
+    for mname, r in [("OLS", res_ols), ("DOLS", res_dols)]:
+        b  = r.params["x"]
+        se = r.bse["x"]
+        lo, hi = b - 1.96 * se, b + 1.96 * se
+        note = "invalid SEs" if mname == "OLS" else "valid HAC SEs"
+        print(f"  {mname:>8} | {b:>9.4f} | {se:>8.4f} | [{lo:.3f}, {hi:.3f}]     | {note}")
+
+    print()
+    print(f"  Engle-Granger test: stat = {eg_stat:.4f},  p = {eg_pval:.4f}")
+    print()
+    print("  DOLS adds leads/lags of Δx to remove endogeneity bias in static OLS.")
+    print("  Always use DOLS, FMOLS, or VECM for inference on the cointegrating vector.")
+
+
+# ==============================================================
+# 7. Practical Guide
+# ==============================================================
+
+def demo_practical_guide() -> None:
+    steps = [
+        ("Step 1: Confirm all series are I(1).",
+         "Run ADF and KPSS on each variable in levels and first differences.",
+         "Only proceed with cointegration analysis if all variables are I(1)."),
+
+        ("Step 2: For two variables, apply Engle-Granger.",
+         "OLS of y on x; pass residuals to coint() from statsmodels.",
+         "p < 0.05 -> cointegrated; proceed to build the ECM."),
+
+        ("Step 3: For three or more variables, use Johansen.",
+         "select_coint_rank() returns the estimated rank r.",
+         "r=0: VAR in differences.  0 < r < k: VECM with that rank."),
+
+        ("Step 4: Estimate and interpret the ECM.",
+         "Check that at least one alpha is negative (error-correcting).",
+         "Interpret |alpha|: how many periods to restore equilibrium."),
+
+        ("Step 5: Use DOLS or FMOLS for inference on beta.",
+         "OLS on I(1) levels gives biased standard errors -- do not use them.",
+         "DOLS: add leads and lags of Δx; use HAC standard errors."),
+
+        ("Step 6: Forecast from the VECM.",
+         "vecm_result.predict() produces multivariate forecasts.",
+         "Confidence intervals widen with horizon, as in ARIMA."),
+
+        ("Common pitfalls:",
+         "Regressing I(2) on I(1) series -- integration orders must match.",
+         "Using t-stats from static OLS on cointegrated levels for inference."),
+    ]
+
+    print()
+    for question, opt_a, opt_b in steps:
+        print(f"  {question}")
+        print(f"    {opt_a}")
+        print(f"    {opt_b}")
+        print()
+
+    print("  Cointegration and ECM preserve long-run information that differencing discards.")
+    print("  They are the standard approach for long-run macroeconomic modeling.")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. The Concept of Cointegration")
+    demo_cointegration_concept()
+
+    section("2. Engle-Granger Two-Step Procedure")
+    demo_engle_granger()
+
+    section("3. Johansen Test")
+    demo_johansen_test()
+
+    section("4. The Error Correction Model")
+    demo_ecm_concept()
+
+    section("5. Estimating ECM with statsmodels VECM")
+    demo_vecm()
+
+    section("6. Interpreting Cointegration Results")
+    demo_interpretation()
+
+    section("7. Practical Guide")
+    demo_practical_guide()
+
+
+if __name__ == "__main__":
+    main()
