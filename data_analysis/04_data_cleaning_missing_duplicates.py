@@ -273,3 +273,83 @@ def demo_outliers() -> None:
         | df_clean["salary"].isna()
     ]
     print(f"\n  After dropping IQR outliers: {len(df)} -> {len(df_clean)} rows")
+
+
+# ==============================================================
+# 7. Practical Example: Cleaning a Messy Survey Dataset
+# ==============================================================
+# A full cleaning pipeline on a single DataFrame, applying every
+# technique above in the order a real analyst would reach for them:
+# inspect -> deduplicate -> standardise -> impute -> cap outliers.
+
+def demo_cleaning_pipeline() -> None:
+    df = make_messy_df()
+
+    print(f"\n  --- Raw data ---")
+    print(df.to_string(index=False))
+    print(f"\n  Shape: {df.shape}  |  Nulls: {df.isnull().sum().sum()}")
+
+    # Step 1: deduplicate on emp_id, keeping the first record
+    df = df.drop_duplicates(subset=["emp_id"], keep="first")
+    print(f"\n  Step 1 — Deduplication: {df.shape[0]} rows remain")
+
+    # Step 2: standardise dept labels
+    dept_map = {"eng": "Engineering", "sales": "Sales", "hr": "HR", "finance": "Finance"}
+    df["dept"] = df["dept"].str.strip().str.lower().map(dept_map)
+    print(f"\n  Step 2 — Dept after standardisation: {df['dept'].tolist()}")
+
+    # Step 3: impute missing values
+    df["age"]       = df["age"].fillna(df["age"].median())
+    df["score"]     = df["score"].fillna(df["score"].mean().round(2))
+    df["hire_year"] = df["hire_year"].fillna(df["hire_year"].median()).astype(int)
+    df["salary"]    = df["salary"].fillna(df["salary"].median())
+    print(f"\n  Step 3 — Nulls after imputation: {df.isnull().sum().sum()}")
+
+    # Step 4: cap salary outliers using the IQR fence
+    q1, q3 = df["salary"].quantile(0.25), df["salary"].quantile(0.75)
+    iqr    = q3 - q1
+    lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+    df["salary"] = df["salary"].clip(lower=lo, upper=hi)
+    print(f"\n  Step 4 — Salary capped to [{lo:,.0f}, {hi:,.0f}]")
+
+    # Step 5: add a derived tenure column
+    df["tenure_yrs"] = 2024 - df["hire_year"]
+
+    print(f"\n  --- Clean data ---")
+    print(df.to_string(index=False))
+    print(f"\n  Shape: {df.shape}  |  Nulls: {df.isnull().sum().sum()}")
+
+    # Summary statistics on the clean data
+    print(f"\n  Summary statistics (numeric columns):")
+    print(df[["age", "salary", "score", "tenure_yrs"]].describe().round(2))
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Detecting Missing Values")
+    demo_detect_missing()
+
+    section("2. Dropping Missing Values")
+    demo_drop_missing()
+
+    section("3. Filling Missing Values")
+    demo_fill_missing()
+
+    section("4. Detecting and Removing Duplicates")
+    demo_duplicates()
+
+    section("5. Fixing Inconsistent Data")
+    demo_inconsistent_data()
+
+    section("6. Detecting and Handling Outliers")
+    demo_outliers()
+
+    section("7. Practical Example: Cleaning a Messy Survey Dataset")
+    demo_cleaning_pipeline()
+
+
+if __name__ == "__main__":
+    main()
