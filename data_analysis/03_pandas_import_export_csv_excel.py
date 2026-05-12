@@ -45,3 +45,50 @@ def make_employees() -> pd.DataFrame:
         "rating":    rating,
         "hire_date": hired,
     })
+
+
+# ==============================================================
+# 1. Writing a CSV from Scratch (csv module)
+# ==============================================================
+# The stdlib csv module shows what a CSV file actually is: plain
+# delimited text. Understanding the raw format prevents confusion
+# when pandas read_csv behaves unexpectedly due to quoting or encoding.
+
+def demo_write_csv_stdlib(path: str) -> None:
+    rows = [
+        ["id", "city",         "population"],
+        [1,    "New York",     8_336_817],
+        [2,    "Los Angeles",  3_979_576],
+        [3,    "Chicago",      2_693_976],
+        [4,    "Houston",      2_320_268],
+    ]
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerows(rows)
+
+    print(f"\n  Wrote CSV to: {path}")
+    print(f"\n  Raw file content:")
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            print(f"    {line}", end="")
+
+
+# ==============================================================
+# 2. Reading CSV with pandas
+# ==============================================================
+# pd.read_csv is the entry point for almost all tabular data.
+# The defaults handle the common case; learning the key parameters
+# saves hours debugging real-world files.
+
+def demo_read_csv(path: str) -> None:
+    # Basic read — pandas infers dtypes automatically
+    df = pd.read_csv(path)
+    print(f"\n  pd.read_csv result:")
+    print(df.to_string(index=False))
+    print(f"\n  dtypes:\n{df.dtypes}")
+    print(f"\n  shape: {df.shape}")
+
+    # Use a column as the index at read time
+    df_idx = pd.read_csv(path, index_col="id")
+    print(f"\n  index_col='id':")
+    print(df_idx.to_string())
