@@ -6,7 +6,7 @@ Pandas Import and Export — CSV and Excel:
 - Reading and writing Excel: read_excel and to_excel
 - Common read_csv parameters: sep, header, usecols, dtype, parse_dates
 - Load-time filtering: skiprows, nrows, na_values
-- Practical workflow: load → inspect → clean → export
+- Practical workflow: load -> inspect -> clean -> export
 """
 
 import csv
@@ -240,3 +240,106 @@ def demo_load_filtering() -> None:
     )
     print(f"\n  Combined (skiprows=1, nrows=3, na_values=['UNKNOWN']):")
     print(df_all.to_string(index=False))
+
+
+# ==============================================================
+# 7. Practical Workflow: Load -> Inspect -> Clean -> Export
+# ==============================================================
+# A realistic mini-pipeline: load a messy raw CSV, inspect it,
+# fix the problems found, then export clean files in CSV and Excel.
+# This is the template for almost every real data project.
+
+def demo_workflow(tmp_dir: str) -> None:
+    raw_path = os.path.join(tmp_dir, "employees_raw.csv")
+
+    # Write a raw file with intentional issues:
+    #   - metadata comment line at top
+    #   - missing rating for one employee
+    #   - implausible salary outlier (999999)
+    #   - negative salary (-1)
+    with open(raw_path, "w", newline="", encoding="utf-8") as f:
+        f.write(
+            "# HR export 2024-06\n"
+            "emp_id,dept,salary,hire_year,rating\n"
+            "101,Eng,88000,2018,excellent\n"
+            "102,Sales,52000,2020,good\n"
+            "103,HR,61000,2019,N/A\n"
+            "104,Eng,999999,2017,excellent\n"
+            "105,Finance,71000,2021,good\n"
+            "106,Sales,-1,2022,needs_improvement\n"
+            "107,Eng,93000,2016,excellent\n"
+        )
+
+    # Step 1: load with sensible parameters
+    df = pd.read_csv(
+        raw_path,
+        skiprows=1,
+        na_values=["N/A"],
+        dtype={"emp_id": str},
+    )
+    print(f"\n  Step 1 — Raw load ({df.shape[0]} rows, {df.shape[1]} cols):")
+    print(df.to_string(index=False))
+
+    # Step 2: inspect — dtypes and missing values
+    print(f"\n  Step 2 — Dtypes and null counts:")
+    for col in df.columns:
+        print(f"    {col:<12}  dtype={str(df[col].dtype):<10}  "
+              f"nulls={df[col].isna().sum()}")
+
+    # Step 3: clean
+    df = df.dropna(subset=["rating"])                      # drop missing rating
+    df = df[df["salary"].between(20_000, 200_000)]         # remove outliers
+    df["tenure_yrs"] = 2024 - df["hire_year"]              # add derived column
+
+    print(f"\n  Step 3 — After cleaning ({df.shape[0]} rows):")
+    print(df.to_string(index=False))
+
+    # Step 4: export to CSV and Excel
+    clean_csv  = os.path.join(tmp_dir, "employees_clean.csv")
+    clean_xlsx = os.path.join(tmp_dir, "employees_clean.xlsx")
+    df.to_csv(clean_csv, index=False)
+    df.to_excel(clean_xlsx, sheet_name="clean", index=False)
+
+    print(f"\n  Step 4 — Exported:")
+    print(f"    {clean_csv}")
+    print(f"    {clean_xlsx}")
+
+    # Verify the CSV round-trips cleanly
+    df_check = pd.read_csv(clean_csv, dtype={"emp_id": str})
+    print(f"\n  Round-trip shape matches: {df.shape == df_check.shape}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    tmp_dir    = tempfile.mkdtemp()
+    cities_csv = os.path.join(tmp_dir, "cities.csv")
+    emp_base   = os.path.join(tmp_dir, "employees")
+    emp_df     = make_employees()
+
+    section("1. Writing a CSV from Scratch (csv module)")
+    demo_write_csv_stdlib(cities_csv)
+
+    section("2. Reading CSV with pandas")
+    demo_read_csv(cities_csv)
+
+    section("3. Writing CSV with pandas")
+    demo_to_csv(emp_df, emp_base)
+
+    section("4. Reading and Writing Excel")
+    demo_excel(emp_df, emp_base)
+
+    section("5. Common read_csv Parameters")
+    demo_read_csv_params()
+
+    section("6. Load-time Filtering: skiprows, nrows, na_values")
+    demo_load_filtering()
+
+    section("7. Practical Workflow: Load -> Inspect -> Clean -> Export")
+    demo_workflow(tmp_dir)
+
+
+if __name__ == "__main__":
+    main()
