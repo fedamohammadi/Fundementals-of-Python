@@ -155,3 +155,76 @@ def demo_indexing() -> None:
 
     # .iloc — purely positional
     print(f"\n  .iloc[0:3, 0:3] (top-left block):\n{df.iloc[0:3, 0:3]}")
+
+
+# ==============================================================
+# 5. Adding and Dropping Columns
+# ==============================================================
+# Derived columns are computed from existing ones and assigned back.
+# Drop removes columns (axis=1) or rows (axis=0).
+# Rename replaces column labels without touching values.
+
+def demo_columns() -> None:
+    df = make_employees()
+
+    # Add derived columns
+    df["monthly_salary"] = df["salary"] / 12
+    df["seniority"] = df["yrs_exp"].apply(
+        lambda y: "junior" if y < 4 else ("mid" if y < 7 else "senior")
+    )
+    print(f"\n  Derived columns added:")
+    print(df[["emp_id", "salary", "monthly_salary", "seniority"]])
+
+    # Drop a column
+    df_slim = df.drop(columns=["monthly_salary"])
+    print(f"\n  Columns after drop: {df_slim.columns.tolist()}")
+
+    # Drop rows by index position
+    df_trimmed = df.drop(index=[0, 5])
+    print(f"\n  After dropping rows 0 and 5:")
+    print(df_trimmed[["emp_id", "dept"]].to_string(index=False))
+
+    # Rename columns
+    df_renamed = df.rename(columns={"yrs_exp": "experience", "dept": "department"})
+    print(f"\n  Renamed columns: {df_renamed.columns.tolist()}")
+
+
+# ==============================================================
+# 6. Applying Functions
+# ==============================================================
+# .apply() maps any callable over rows or columns.
+# .map() replaces individual Series values via a dict or function.
+# For simple arithmetic, vectorized operators are the fastest path.
+
+def demo_apply() -> None:
+    df = make_employees()
+
+    # Vectorized arithmetic (NumPy speed, no Python loop)
+    df["salary_k"] = df["salary"] / 1_000
+    print(f"\n  Salary in thousands (vectorised): {df['salary_k'].values}")
+
+    # apply on a column: custom bucketing
+    def salary_band(s: float) -> str:
+        if s < 60_000: return "low"
+        if s < 80_000: return "mid"
+        return "high"
+
+    df["band"] = df["salary"].apply(salary_band)
+    print(f"\n  Salary bands:\n{df[['emp_id', 'salary', 'band']]}")
+
+    # apply on rows (axis=1): combine multiple columns
+    df["score"] = df.apply(
+        lambda row: row["salary"] / 1_000 + row["yrs_exp"] * 5,
+        axis=1,
+    )
+    print(f"\n  Composite score (salary/1k + 5×experience):")
+    print(df[["emp_id", "salary", "yrs_exp", "score"]])
+
+    # map: recode categoricals with a lookup dict
+    dept_map = {"Sales": "Revenue", "Eng": "Engineering", "HR": "People"}
+    df["dept_full"] = df["dept"].map(dept_map)
+    print(f"\n  Department full names:\n{df[['dept', 'dept_full']]}")
+
+    # String accessor — .str exposes vectorized string methods
+    df["dept_upper"] = df["dept"].str.upper()
+    print(f"\n  .str.upper(): {df['dept_upper'].tolist()}")
