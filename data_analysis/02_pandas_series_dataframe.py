@@ -228,3 +228,94 @@ def demo_apply() -> None:
     # String accessor — .str exposes vectorized string methods
     df["dept_upper"] = df["dept"].str.upper()
     print(f"\n  .str.upper(): {df['dept_upper'].tolist()}")
+
+
+# ==============================================================
+# 7. Practical Example: Student Gradebook Analysis
+# ==============================================================
+# Compute weighted averages, assign letter grades, rank students,
+# and summarise by section — a complete mini-pipeline that ties
+# together creation, column ops, apply, and groupby.
+
+def make_gradebook() -> pd.DataFrame:
+    rng = np.random.default_rng(99)
+    return pd.DataFrame({
+        "student": [f"S{i:02d}" for i in range(1, 11)],
+        "section": ["A", "A", "A", "A", "A", "B", "B", "B", "B", "B"],
+        "midterm": rng.integers(50, 100, 10).tolist(),
+        "final":   rng.integers(50, 100, 10).tolist(),
+        "hw_avg":  rng.integers(60, 100, 10).tolist(),
+    })
+
+
+def letter_grade(score: float) -> str:
+    if score >= 90: return "A"
+    if score >= 80: return "B"
+    if score >= 70: return "C"
+    if score >= 60: return "D"
+    return "F"
+
+
+def demo_gradebook() -> None:
+    df = make_gradebook()
+    print(f"\n  Raw gradebook:\n{df.to_string(index=False)}")
+
+    # Weighted average: midterm 30%, final 50%, hw 20%
+    df["weighted_avg"] = (
+        df["midterm"] * 0.30 +
+        df["final"]   * 0.50 +
+        df["hw_avg"]  * 0.20
+    ).round(1)
+    df["letter"] = df["weighted_avg"].apply(letter_grade)
+    df["rank"]   = df["weighted_avg"].rank(ascending=False, method="min").astype(int)
+
+    result_cols = ["student", "section", "weighted_avg", "letter", "rank"]
+    print(f"\n  Grades and ranks:")
+    print(df[result_cols].sort_values("rank").to_string(index=False))
+
+    # Section summary using groupby + agg
+    summary = (
+        df.groupby("section")["weighted_avg"]
+        .agg(count="count", mean="mean", std="std", min="min", max="max")
+        .round(2)
+    )
+    print(f"\n  Summary by section:\n{summary}")
+
+    # Grade distribution across both sections
+    grade_counts = df["letter"].value_counts().sort_index()
+    print(f"\n  Grade distribution:\n{grade_counts}")
+
+    # Top 3 students overall
+    top3 = df.nsmallest(3, "rank")[["student", "section", "weighted_avg", "letter"]]
+    print(f"\n  Top 3 students:\n{top3.to_string(index=False)}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Creating a Series")
+    demo_series()
+
+    section("2. Creating a DataFrame")
+    demo_dataframe()
+
+    section("3. Basic Inspection")
+    demo_inspection()
+
+    section("4. Indexing and Selection")
+    demo_indexing()
+
+    section("5. Adding and Dropping Columns")
+    demo_columns()
+
+    section("6. Applying Functions")
+    demo_apply()
+
+    section("7. Practical Example: Student Gradebook")
+    demo_gradebook()
+
+
+if __name__ == "__main__":
+    main()
