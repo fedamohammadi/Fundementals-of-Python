@@ -101,3 +101,82 @@ def demo_drop_missing() -> None:
     print(f"\n  dropna(subset=['salary','dept']) — drop only if salary or dept is null:")
     print(f"  {len(df)} rows -> {len(df_subset)} rows")
     print(df_subset.to_string(index=False))
+
+
+# ==============================================================
+# 3. Filling Missing Values
+# ==============================================================
+# Filling (imputation) keeps all rows in the dataset — valuable
+# when dropping would lose too much data. The right fill strategy
+# depends on context: a constant, the column mean, or the
+# neighbouring value in a time series.
+
+def demo_fill_missing() -> None:
+    df = make_messy_df()
+
+    # Fill with a scalar constant
+    df_const = df.copy()
+    df_const["score"]     = df_const["score"].fillna(0.0)
+    df_const["hire_year"] = df_const["hire_year"].fillna(9999)
+    print(f"\n  fillna(constant) — score->0, hire_year->9999:")
+    print(df_const[["emp_id", "score", "hire_year"]].to_string(index=False))
+
+    # Fill with column statistics (mean for numeric columns)
+    df_mean = df.copy()
+    df_mean["age"]    = df_mean["age"].fillna(df_mean["age"].mean().round(1))
+    df_mean["salary"] = df_mean["salary"].fillna(df_mean["salary"].median())
+    df_mean["score"]  = df_mean["score"].fillna(df_mean["score"].mean().round(2))
+    print(f"\n  fillna(mean/median):")
+    print(df_mean[["emp_id", "age", "salary", "score"]].to_string(index=False))
+
+    # Forward fill (ffill): carry the last valid value forward
+    # Useful for time-ordered data where gaps should inherit the prior state.
+    ts = pd.Series([10.0, None, None, 13.0, None, 15.0])
+    print(f"\n  Forward fill (ffill) on a time series:")
+    print(f"  Original : {ts.tolist()}")
+    print(f"  After    : {ts.ffill().tolist()}")
+
+    # Backward fill (bfill): fill from the next valid value
+    print(f"\n  Backward fill (bfill):")
+    print(f"  After    : {ts.bfill().tolist()}")
+
+    # interpolate: estimate missing values using linear interpolation
+    ts2 = pd.Series([1.0, None, None, 4.0, None, 10.0])
+    print(f"\n  Linear interpolation:")
+    print(f"  Original    : {ts2.tolist()}")
+    print(f"  Interpolated: {ts2.interpolate().tolist()}")
+
+
+# ==============================================================
+# 4. Detecting and Removing Duplicates
+# ==============================================================
+# A duplicate row is an observation that appears more than once.
+# duplicated() flags them; drop_duplicates() removes them.
+# Choosing which copy to keep — first, last, or none — matters
+# when the duplicates differ on other columns.
+
+def demo_duplicates() -> None:
+    df = make_messy_df()
+
+    # Flag duplicate rows (default: all columns, keep first occurrence)
+    dup_mask = df.duplicated()
+    print(f"\n  df.duplicated() — is each row a duplicate?")
+    print(f"  {dup_mask.values}")
+    print(f"  Number of duplicate rows: {dup_mask.sum()}")
+
+    # Show the duplicate rows
+    print(f"\n  Duplicate rows:\n{df[dup_mask].to_string(index=False)}")
+
+    # Remove duplicates, keeping the first occurrence
+    df_dedup = df.drop_duplicates()
+    print(f"\n  After drop_duplicates(): {len(df)} -> {len(df_dedup)} rows")
+
+    # Duplicate on a subset of columns: same emp_id entered twice
+    dup_id = df.duplicated(subset=["emp_id"])
+    print(f"\n  Duplicates on emp_id only:")
+    print(df[dup_id][["emp_id", "dept", "salary"]].to_string(index=False))
+
+    # Keep the last occurrence (e.g. most recent record wins)
+    df_last = df.drop_duplicates(subset=["emp_id"], keep="last")
+    print(f"\n  drop_duplicates(subset=['emp_id'], keep='last'):")
+    print(df_last[["emp_id", "dept", "salary"]].to_string(index=False))
