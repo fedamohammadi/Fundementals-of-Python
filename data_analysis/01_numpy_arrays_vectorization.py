@@ -82,3 +82,82 @@ def demo_attributes_reshape() -> None:
     float64_arr = np.array([1.0, 2.5, 3.7], dtype=np.float64)
     print(f"\n  float32 bytes: {float32_arr.nbytes}  |  "
           f"float64 bytes: {float64_arr.nbytes}")
+
+
+# ==============================================================
+# 3. Indexing and Slicing
+# ==============================================================
+# NumPy extends Python's slice syntax to multiple dimensions.
+# Boolean masks let you select by condition rather than position
+# — the backbone of data filtering without loops.
+
+def demo_indexing_slicing() -> None:
+    rng   = np.random.default_rng(7)
+    daily = rng.normal(0.0005, 0.015, size=10).round(4)
+    print(f"\n  10 daily returns: {daily}")
+
+    # Scalar access and slicing
+    print(f"\n  First return        : {daily[0]}")
+    print(f"  Last return         : {daily[-1]}")
+    print(f"  Returns index 3-5   : {daily[3:6]}")
+    print(f"  Every other return  : {daily[::2]}")
+
+    # 2D indexing
+    prices = np.array([
+        [100, 101, 102],   # stock A
+        [200, 198, 205],   # stock B
+        [ 50,  51,  49],   # stock C
+    ])
+    print(f"\n  Price matrix (3 stocks × 3 days):\n{prices}")
+    print(f"\n  Row 1 (stock B)     : {prices[1, :]}")
+    print(f"  Column 2 (day 3)    : {prices[:, 2]}")
+    print(f"  Sub-matrix [0:2, 1:3]:\n{prices[0:2, 1:3]}")
+
+    # Boolean mask: select only positive returns
+    pos_mask    = daily > 0
+    pos_returns = daily[pos_mask]
+    print(f"\n  Boolean mask (daily > 0): {pos_mask}")
+    print(f"  Positive returns        : {pos_returns}")
+
+    # Fancy indexing: select by a list of positions
+    selected = daily[[0, 2, 4, 9]]
+    print(f"\n  Fancy index [0,2,4,9]   : {selected}")
+
+
+# ==============================================================
+# 4. Arithmetic and Broadcasting
+# ==============================================================
+# NumPy operations apply element-wise to entire arrays with no loop.
+# Broadcasting extends this to arrays of different — but compatible —
+# shapes, aligning dimensions from the right and stretching size-1 axes.
+
+def demo_arithmetic_broadcasting() -> None:
+    a = np.array([1.0, 2.0, 3.0, 4.0])
+    b = np.array([10.0, 20.0, 30.0, 40.0])
+
+    print(f"\n  a = {a}")
+    print(f"  b = {b}")
+    print(f"\n  a + b  = {a + b}")
+    print(f"  a * b  = {a * b}")
+    print(f"  b / a  = {b / a}")
+    print(f"  a ** 2 = {a ** 2}")
+
+    # Scalar broadcasting: the scalar stretches to every element
+    print(f"\n  a * 100 (scalar broadcast) = {a * 100}")
+
+    # Shape broadcasting: (3, 1) stretches across (3, 3)
+    weights = np.array([[0.5], [0.3], [0.2]])   # shape (3, 1)
+    rets    = np.array([
+        [ 0.01,  0.02, -0.01],
+        [ 0.005, 0.01,  0.00],
+        [-0.02,  0.03,  0.01],
+    ])                                            # shape (3, 3)
+    weighted = weights * rets                     # shape (3, 3)
+    print(f"\n  Weight column:\n{weights.T}")
+    print(f"\n  Returns matrix:\n{rets}")
+    print(f"\n  Weighted returns (broadcast multiply):\n{weighted.round(4)}")
+
+    # Universal functions (ufuncs): fast compiled math, element-wise
+    rates = np.array([0.03, 0.05, 0.08, 0.10])
+    print(f"\n  np.log1p(rates) — log continuous compounding: {np.log1p(rates).round(5)}")
+    print(f"  np.exp(rates)   — growth factor e^rate       : {np.exp(rates).round(5)}")
