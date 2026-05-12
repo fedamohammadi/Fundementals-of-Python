@@ -180,3 +180,96 @@ def demo_duplicates() -> None:
     df_last = df.drop_duplicates(subset=["emp_id"], keep="last")
     print(f"\n  drop_duplicates(subset=['emp_id'], keep='last'):")
     print(df_last[["emp_id", "dept", "salary"]].to_string(index=False))
+
+
+# ==============================================================
+# 5. Fixing Inconsistent Data
+# ==============================================================
+# Inconsistency hides in plain sight: "eng" and "ENG" and "Eng"
+# all mean the same department, but groupby treats them as three.
+# String normalisation and categorical mapping fix this before
+# any aggregation or modelling step.
+
+def demo_inconsistent_data() -> None:
+    df = make_messy_df()
+
+    print(f"\n  Raw dept values: {df['dept'].tolist()}")
+    print(f"  Unique values  : {df['dept'].unique()}")
+
+    # Step 1: strip whitespace and lowercase
+    df["dept_clean"] = df["dept"].str.strip().str.lower()
+    print(f"\n  After .str.strip().str.lower():")
+    print(f"  {df['dept_clean'].tolist()}")
+
+    # Step 2: unify aliases with a mapping dict
+    dept_map = {
+        "eng":     "Engineering",
+        "sales":   "Sales",
+        "hr":      "HR",
+        "finance": "Finance",
+    }
+    df["dept_clean"] = df["dept_clean"].map(dept_map)
+    print(f"\n  After map(dept_map):")
+    print(f"  {df['dept_clean'].tolist()}")
+
+    # Step 3: inspect the result
+    print(f"\n  Value counts after cleaning:")
+    print(df["dept_clean"].value_counts().to_string())
+
+    # Fixing a numeric column with a bad sentinel value
+    # hire_year == 9999 was used as a placeholder; replace with NaN
+    df2 = df.copy()
+    df2["hire_year"] = df2["hire_year"].replace(9999, np.nan)
+    print(f"\n  Replace sentinel 9999 -> NaN in hire_year:")
+    print(df2[["emp_id", "hire_year"]].to_string(index=False))
+
+    # clip: enforce a valid range (age must be 18-70)
+    ages = pd.Series([16.0, 25.0, 34.0, 72.0, 28.0])
+    print(f"\n  Ages before clip   : {ages.tolist()}")
+    print(f"  Ages after clip(18,70): {ages.clip(18, 70).tolist()}")
+
+
+# ==============================================================
+# 6. Detecting and Handling Outliers
+# ==============================================================
+# Outliers can be legitimate extremes or data-entry errors.
+# Two common detection rules:
+#   IQR method : flag values outside [Q1 - 1.5*IQR, Q3 + 1.5*IQR]
+#   Z-score    : flag values where |z| > 3  (more than 3 std from mean)
+# After detection, choose: drop, cap (winsorise), or investigate.
+
+def demo_outliers() -> None:
+    df = make_messy_df()
+    salaries = df["salary"].dropna()
+
+    # ---- IQR method ----
+    q1, q3 = salaries.quantile(0.25), salaries.quantile(0.75)
+    iqr    = q3 - q1
+    lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+
+    outlier_mask = (salaries < lo) | (salaries > hi)
+    print(f"\n  IQR method on salary:")
+    print(f"    Q1={q1:,.0f}  Q3={q3:,.0f}  IQR={iqr:,.0f}")
+    print(f"    Fence: [{lo:,.0f}, {hi:,.0f}]")
+    print(f"    Outlier values: {salaries[outlier_mask].tolist()}")
+
+    # ---- Z-score method ----
+    z_scores = (salaries - salaries.mean()) / salaries.std(ddof=1)
+    z_outliers = salaries[z_scores.abs() > 2.5]
+    print(f"\n  Z-score method (|z| > 2.5):")
+    print(f"    Mean={salaries.mean():,.0f}  Std={salaries.std(ddof=1):,.0f}")
+    print(f"    Outlier values: {z_outliers.tolist()}")
+
+    # ---- Winsorising (capping) ----
+    # Replace outliers with the fence values rather than dropping them.
+    salaries_capped = salaries.clip(lower=lo, upper=hi)
+    print(f"\n  Original salaries : {salaries.tolist()}")
+    print(f"  Winsorised (IQR)  : {salaries_capped.tolist()}")
+
+    # ---- Dropping outliers ----
+    df_clean = df.copy()
+    df_clean = df_clean[
+        (df_clean["salary"] >= lo) & (df_clean["salary"] <= hi)
+        | df_clean["salary"].isna()
+    ]
+    print(f"\n  After dropping IQR outliers: {len(df)} -> {len(df_clean)} rows")
