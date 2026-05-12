@@ -92,3 +92,61 @@ def demo_read_csv(path: str) -> None:
     df_idx = pd.read_csv(path, index_col="id")
     print(f"\n  index_col='id':")
     print(df_idx.to_string())
+
+
+# ==============================================================
+# 3. Writing CSV with pandas
+# ==============================================================
+# df.to_csv() is the inverse of read_csv. The most important
+# parameter is index=False — by default pandas writes the index
+# as an extra first column, which clutters the file on re-read.
+
+def demo_to_csv(df: pd.DataFrame, base_path: str) -> None:
+    # index=False: clean file with no unnamed column on re-read
+    df.to_csv(base_path + "_no_index.csv", index=False)
+    print(f"\n  Wrote (no index): {base_path}_no_index.csv")
+
+    # Custom delimiter and column subset
+    df[["emp_id", "dept", "salary"]].to_csv(
+        base_path + "_pipe.csv", sep="|", index=False
+    )
+    print(f"  Wrote pipe-delimited subset: {base_path}_pipe.csv")
+
+    # Round-trip verification
+    df_back = pd.read_csv(base_path + "_no_index.csv")
+    print(f"\n  Round-trip shape matches: {df.shape == df_back.shape}")
+    print(f"\n  First 3 rows of round-tripped file:")
+    print(df_back.head(3).to_string(index=False))
+
+
+# ==============================================================
+# 4. Reading and Writing Excel
+# ==============================================================
+# read_excel and to_excel mirror their CSV counterparts but also
+# handle multiple sheets. Requires openpyxl for .xlsx files.
+
+def demo_excel(df: pd.DataFrame, base_path: str) -> None:
+    xlsx_path = base_path + ".xlsx"
+
+    # Write multiple sheets in one pass using ExcelWriter
+    summary = (
+        df.groupby("dept")["salary"]
+        .agg(count="count", mean_salary="mean")
+        .round(0)
+        .reset_index()
+    )
+    with pd.ExcelWriter(xlsx_path, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="employees", index=False)
+        summary.to_excel(writer, sheet_name="dept_summary", index=False)
+
+    print(f"\n  Wrote Excel workbook: {xlsx_path}")
+    print(f"  Sheets written: employees, dept_summary")
+
+    # Read back a specific sheet
+    df_emp = pd.read_excel(xlsx_path, sheet_name="employees")
+    print(f"\n  'employees' sheet (first 3 rows):")
+    print(df_emp.head(3).to_string(index=False))
+
+    # Read back the summary sheet
+    df_summ = pd.read_excel(xlsx_path, sheet_name="dept_summary")
+    print(f"\n  'dept_summary' sheet:\n{df_summ.to_string(index=False)}")
