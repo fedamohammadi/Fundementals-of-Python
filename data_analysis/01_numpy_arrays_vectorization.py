@@ -161,3 +161,74 @@ def demo_arithmetic_broadcasting() -> None:
     rates = np.array([0.03, 0.05, 0.08, 0.10])
     print(f"\n  np.log1p(rates) — log continuous compounding: {np.log1p(rates).round(5)}")
     print(f"  np.exp(rates)   — growth factor e^rate       : {np.exp(rates).round(5)}")
+
+
+# ==============================================================
+# 5. Aggregation and Axis Operations
+# ==============================================================
+# Aggregation functions (sum, mean, std, min, max) collapse an axis.
+# axis=0 collapses rows → per-column result.
+# axis=1 collapses columns → per-row result.
+
+def demo_aggregation() -> None:
+    rng = np.random.default_rng(42)
+    # 4 assets × 12 monthly returns
+    returns = rng.normal(0.008, 0.04, size=(4, 12))
+
+    print(f"\n  Monthly returns matrix — shape {returns.shape}  (4 assets × 12 months)")
+
+    # Global aggregates (collapse everything)
+    print(f"\n  Global mean    : {returns.mean():.5f}")
+    print(f"  Global std     : {returns.std():.5f}")
+    print(f"  Global min/max : {returns.min():.5f} / {returns.max():.5f}")
+
+    # Per-asset: collapse months (axis=1)
+    asset_means = returns.mean(axis=1)
+    asset_stds  = returns.std(axis=1, ddof=1)
+    print(f"\n  Per-asset mean (axis=1): {asset_means.round(5)}")
+    print(f"  Per-asset std  (axis=1): {asset_stds.round(5)}")
+
+    # Per-month: collapse assets (axis=0)
+    month_means = returns.mean(axis=0)
+    print(f"\n  Per-month mean (axis=0):\n  {month_means.round(5)}")
+
+    # Cumulative product along time axis
+    cum_returns  = np.cumprod(1 + returns[0])
+    total_return = cum_returns[-1] - 1
+    print(f"\n  Asset 0 — cumulative return over 12 months: {total_return * 100:.2f}%")
+
+
+# ==============================================================
+# 6. Vectorization vs. Python Loops
+# ==============================================================
+# A vectorized NumPy call runs in compiled C; a Python loop adds
+# per-iteration interpreter overhead. On large arrays the speedup
+# is 10–100x. The rule: replace any element-wise loop with a
+# NumPy operator or ufunc.
+
+def demo_vectorization() -> None:
+    n = 1_000_000
+    rng = np.random.default_rng(0)
+    arr = rng.random(n)
+
+    t0 = time.perf_counter()
+    _loop = [x ** 2 for x in arr]
+    loop_time = time.perf_counter() - t0
+
+    t0 = time.perf_counter()
+    _vec = arr ** 2
+    vec_time = time.perf_counter() - t0
+
+    print(f"\n  Array size         : {n:,}")
+    print(f"  Python loop time   : {loop_time:.4f} s")
+    print(f"  NumPy vectorised   : {vec_time:.4f} s")
+    print(f"  Speedup            : ~{loop_time / vec_time:.0f}×")
+
+    # Practical pattern: simple returns via np.diff vs. a loop
+    prices = np.array([100.0, 102.5, 98.3, 107.1, 105.0])
+    returns_loop = [(prices[i] - prices[i-1]) / prices[i-1] for i in range(1, len(prices))]
+    returns_vec  = np.diff(prices) / prices[:-1]
+
+    print(f"\n  Simple returns (loop) : {[round(r, 5) for r in returns_loop]}")
+    print(f"  Simple returns (NumPy): {returns_vec.round(5)}")
+    print(f"  Results identical     : {np.allclose(returns_loop, returns_vec)}")
