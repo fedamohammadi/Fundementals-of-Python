@@ -232,3 +232,75 @@ def demo_vectorization() -> None:
     print(f"\n  Simple returns (loop) : {[round(r, 5) for r in returns_loop]}")
     print(f"  Simple returns (NumPy): {returns_vec.round(5)}")
     print(f"  Results identical     : {np.allclose(returns_loop, returns_vec)}")
+
+
+# ==============================================================
+# 7. Practical Example: Portfolio Return Statistics
+# ==============================================================
+# Simulate asset returns, assign equal weights, and compute the
+# core risk-return metrics that appear in every quant finance or
+# econometrics course: annualised return, volatility, Sharpe ratio,
+# max drawdown, and the asset correlation matrix.
+
+def demo_portfolio() -> None:
+    rng = np.random.default_rng(42)
+    n_assets, n_days = 5, 252
+
+    mu    = np.array([0.0003, 0.0005, 0.0002, 0.0006, 0.0001])
+    sigma = np.array([0.012,  0.018,  0.009,  0.020,  0.007])
+    returns = rng.normal(mu, sigma, size=(n_days, n_assets))   # (252, 5)
+
+    weights     = np.ones(n_assets) / n_assets       # equal-weight
+    port_returns = returns @ weights                  # dot product → (252,)
+
+    ann_return = port_returns.mean() * 252
+    ann_vol    = port_returns.std(ddof=1) * np.sqrt(252)
+    sharpe     = ann_return / ann_vol                 # risk-free rate ≈ 0
+
+    cum_value   = np.cumprod(1 + port_returns)
+    running_max = np.maximum.accumulate(cum_value)
+    max_drawdown = ((cum_value - running_max) / running_max).min()
+
+    corr = np.corrcoef(returns.T)   # shape (5, 5)
+
+    print(f"\n  Equal-weight portfolio  ({n_assets} assets, {n_days} trading days)")
+    print()
+    print(f"  Annualised return  : {ann_return * 100:+.2f}%")
+    print(f"  Annualised vol     : {ann_vol    * 100: .2f}%")
+    print(f"  Sharpe ratio       : {sharpe:.3f}")
+    print(f"  Max drawdown       : {max_drawdown * 100:.2f}%")
+    print()
+    print("  Asset correlation matrix:")
+    for row in corr:
+        print(f"    {' '.join(f'{v:6.3f}' for v in row)}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Creating Arrays")
+    demo_creating_arrays()
+
+    section("2. Array Attributes and Reshaping")
+    demo_attributes_reshape()
+
+    section("3. Indexing and Slicing")
+    demo_indexing_slicing()
+
+    section("4. Arithmetic and Broadcasting")
+    demo_arithmetic_broadcasting()
+
+    section("5. Aggregation and Axis Operations")
+    demo_aggregation()
+
+    section("6. Vectorization vs. Python Loops")
+    demo_vectorization()
+
+    section("7. Practical Example: Portfolio Return Statistics")
+    demo_portfolio()
+
+
+if __name__ == "__main__":
+    main()
