@@ -87,3 +87,71 @@ def demo_dataframe() -> None:
     data  = rng.normal(0, 1, size=(4, 3)).round(3)
     df_np = pd.DataFrame(data, columns=["X1", "X2", "X3"])
     print(f"\n  DataFrame from NumPy array:\n{df_np}")
+
+
+# ==============================================================
+# Shared dataset: employee records used by sections 3–6
+# ==============================================================
+
+def make_employees() -> pd.DataFrame:
+    return pd.DataFrame({
+        "emp_id":  [101, 102, 103, 104, 105, 106],
+        "dept":    ["Sales", "Eng", "Eng", "HR", "Sales", "Eng"],
+        "salary":  [52_000, 88_000, 91_000, 61_000, 55_000, 79_000],
+        "yrs_exp": [2, 5, 7, 3, 4, 6],
+        "remote":  [True, True, False, False, True, True],
+    })
+
+
+# ==============================================================
+# 3. Basic Inspection
+# ==============================================================
+# Before any analysis, always inspect your data. These methods
+# catch dimension mistakes, wrong dtypes, and missing values
+# before they corrupt downstream calculations.
+
+def demo_inspection() -> None:
+    df = make_employees()
+
+    print(f"\n  df.head(3):\n{df.head(3)}")
+    print(f"\n  df.tail(2):\n{df.tail(2)}")
+    print(f"\n  df.shape : {df.shape}   (rows, columns)")
+    print(f"\n  df.dtypes:\n{df.dtypes}")
+    print(f"\n  df.describe():\n{df.describe().round(2)}")
+    print(f"\n  df.info():")
+    df.info()
+
+
+# ==============================================================
+# 4. Indexing and Selection
+# ==============================================================
+# pandas has three selection systems:
+#   []      — column by name, or rows by boolean mask
+#   .loc[]  — label-based: rows and columns by label
+#   .iloc[] — position-based: rows and columns by integer index
+# Mixing these is the most common pandas beginner mistake.
+
+def demo_indexing() -> None:
+    df = make_employees()
+
+    # Single column → Series
+    print(f"\n  df['salary'] values:\n{df['salary'].values}")
+
+    # Multiple columns → DataFrame
+    print(f"\n  df[['emp_id','dept','salary']]:\n{df[['emp_id','dept','salary']]}")
+
+    # Boolean filter
+    engineers = df[df["dept"] == "Eng"]
+    print(f"\n  Engineers only:\n{engineers}")
+
+    # Compound boolean condition (parentheses required)
+    high_remote = df[(df["salary"] > 70_000) & (df["remote"] == True)]
+    print(f"\n  High earners who work remotely:")
+    print(high_remote[["emp_id", "dept", "salary"]])
+
+    # .loc — label-based (set a named index first)
+    df_idx = df.set_index("emp_id")
+    print(f"\n  .loc[103, ['dept','salary']]:\n{df_idx.loc[103, ['dept','salary']]}")
+
+    # .iloc — purely positional
+    print(f"\n  .iloc[0:3, 0:3] (top-left block):\n{df.iloc[0:3, 0:3]}")
