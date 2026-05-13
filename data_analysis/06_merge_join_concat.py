@@ -105,3 +105,50 @@ def demo_inner_join() -> None:
     unmatched_orders    = orders[~orders["cust_id"].isin(customers["cust_id"])].shape[0]
     print(f"\n  Customers dropped (no orders): {unmatched_customers}")
     print(f"  Orders dropped (unknown customer): {unmatched_orders}")
+
+
+# ==============================================================
+# 3. Left and Right Joins
+# ==============================================================
+# A left join keeps all rows from the left DataFrame and fills
+# NaN for columns from the right where no match exists.
+# A right join is the mirror image. Both are useful when the
+# "primary" table must stay intact (e.g. all customers).
+
+def demo_left_right_join() -> None:
+    customers = make_customers()
+    orders    = make_orders()
+
+    # Left join: every customer appears, even without orders
+    left = pd.merge(customers, orders, on="cust_id", how="left")
+    print(f"\n  LEFT JOIN — all customers, NaN where no order ({len(left)} rows):")
+    print(left.to_string(index=False))
+
+    # Right join: every order appears, even without a matching customer
+    right = pd.merge(customers, orders, on="cust_id", how="right")
+    print(f"\n  RIGHT JOIN — all orders, NaN where no customer ({len(right)} rows):")
+    print(right.to_string(index=False))
+
+    # Customers with no orders (NaN in order_id after left join)
+    no_orders = left[left["order_id"].isna()]
+    print(f"\n  Customers with no orders:")
+    print(no_orders[["cust_id", "name", "city", "tier"]].to_string(index=False))
+
+
+# ==============================================================
+# 4. Outer Join
+# ==============================================================
+# An outer (full) join keeps all rows from both DataFrames and
+# fills NaN wherever a match is missing. The indicator= parameter
+# adds a _merge column that shows the origin of each row.
+
+def demo_outer_join() -> None:
+    customers = make_customers()
+    orders    = make_orders()
+
+    outer = pd.merge(customers, orders, on="cust_id", how="outer", indicator=True)
+    print(f"\n  OUTER JOIN with indicator= ({len(outer)} rows):")
+    print(outer.to_string(index=False))
+
+    print(f"\n  Row origin counts:")
+    print(outer["_merge"].value_counts().to_string())
