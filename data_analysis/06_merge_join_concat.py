@@ -152,3 +152,65 @@ def demo_outer_join() -> None:
 
     print(f"\n  Row origin counts:")
     print(outer["_merge"].value_counts().to_string())
+
+
+# ==============================================================
+# 5. Merging on Multiple Keys
+# ==============================================================
+# Use on=[...] with a list of columns to match rows on a
+# composite key. When column names differ across tables use
+# left_on= and right_on= instead of on=.
+
+def demo_multi_key_merge() -> None:
+    inventory = pd.DataFrame({
+        "warehouse": ["A", "A", "B", "B"],
+        "product":   ["Laptop", "Phone", "Laptop", "Phone"],
+        "stock":     [50, 120, 30, 80],
+    })
+    shipments = pd.DataFrame({
+        "warehouse": ["A", "A", "B", "C"],
+        "product":   ["Laptop", "Phone", "Laptop", "Phone"],
+        "shipped":   [10, 25, 5, 15],
+    })
+
+    print(f"\n  Inventory:\n{inventory.to_string(index=False)}")
+    print(f"\n  Shipments:\n{shipments.to_string(index=False)}")
+
+    merged = pd.merge(inventory, shipments, on=["warehouse", "product"], how="left")
+    print(f"\n  Merged on ['warehouse', 'product'] (LEFT JOIN):")
+    print(merged.to_string(index=False))
+
+    # Mismatched column names: use left_on and right_on
+    orders2 = pd.DataFrame({"id": [101, 102], "customer_id": [1, 2], "amount": [500, 200]})
+    cust2   = pd.DataFrame({"cust_id": [1, 2, 3], "name": ["Alice", "Bob", "Carol"]})
+    joined  = pd.merge(orders2, cust2, left_on="customer_id", right_on="cust_id")
+    print(f"\n  Merge with left_on='customer_id', right_on='cust_id':")
+    print(joined.to_string(index=False))
+
+
+# ==============================================================
+# 6. Joining on Index
+# ==============================================================
+# DataFrame.join() merges on the index by default, which is
+# convenient when your keys are already the index. merge() can
+# also join on index via left_index / right_index flags.
+
+def demo_index_join() -> None:
+    customers = make_customers().set_index("cust_id")
+    orders    = make_orders()
+
+    print(f"\n  Customers indexed by cust_id:")
+    print(customers.to_string())
+
+    # join() uses the left DataFrame's index by default
+    result = customers.join(orders.set_index("cust_id"), how="inner")
+    print(f"\n  customers.join(orders, how='inner'):")
+    print(result.to_string())
+
+    # merge() equivalent using left_index / right_index
+    merged = pd.merge(
+        customers, orders,
+        left_index=True, right_on="cust_id", how="inner",
+    )
+    print(f"\n  merge(left_index=True, right_on='cust_id'):")
+    print(merged.to_string(index=False))
