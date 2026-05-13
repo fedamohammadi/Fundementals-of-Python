@@ -102,3 +102,62 @@ def demo_aggregation() -> None:
     multi_col = df.groupby("quarter").agg({"revenue": "sum", "units": "mean"}).round(1)
     print(f"\n  Revenue sum and mean units per quarter:")
     print(multi_col.to_string())
+
+
+# ==============================================================
+# 3. Custom Aggregation Functions
+# ==============================================================
+# Pass any callable to agg(). The function receives a group's
+# Series and must return a scalar. Use a lambda for short logic
+# or a named function when it is reusable across aggregations.
+
+def demo_custom_agg() -> None:
+    df = make_sales_df()
+
+    # Range (max - min) as a custom aggregation
+    rev_range = df.groupby("region")["revenue"].agg(lambda s: s.max() - s.min())
+    print(f"\n  Revenue range (max - min) by region:")
+    print(rev_range.to_string())
+
+    # Coefficient of variation: std / mean * 100
+    def cv(s: pd.Series) -> float:
+        return round(s.std() / s.mean() * 100, 1)
+
+    print(f"\n  Revenue coefficient of variation (%) by region:")
+    print(df.groupby("region")["revenue"].agg(cv).to_string())
+
+    # Mix built-in and custom in one call
+    mixed = df.groupby("product")["revenue"].agg(
+        total =("sum"),
+        spread=(lambda s: s.max() - s.min()),
+    )
+    print(f"\n  Revenue total and spread by product:")
+    print(mixed.to_string())
+
+
+# ==============================================================
+# 4. transform: Broadcasting Results Back
+# ==============================================================
+# transform returns a Series aligned to the original DataFrame's
+# index, repeating the group result for every row in the group.
+# This is the right tool for adding group-level columns without
+# collapsing the DataFrame.
+
+def demo_transform() -> None:
+    df = make_sales_df()
+
+    # Add each row's regional average and deviation from it
+    df["region_avg"] = df.groupby("region")["revenue"].transform("mean").round(0)
+    df["vs_avg"]     = (df["revenue"] - df["region_avg"]).round(0)
+
+    print(f"\n  Revenue vs. regional average:")
+    print(df[["region", "rep", "revenue", "region_avg", "vs_avg"]].to_string(index=False))
+
+    # Rank within each region (1 = highest revenue)
+    df["rank_in_region"] = (
+        df.groupby("region")["revenue"]
+          .transform(lambda s: s.rank(ascending=False).astype(int))
+    )
+    print(f"\n  Rank within region (1 = highest):")
+    ranked = df[["region", "rep", "revenue", "rank_in_region"]].sort_values(["region", "rank_in_region"])
+    print(ranked.to_string(index=False))
