@@ -91,3 +91,70 @@ def demo_type_casting() -> None:
     print(f"\n  object -> Int64 (nullable integer):")
     print(f"  Before dtype: {s.dtype}  |  After dtype: {s_int.dtype}")
     print(f"  Values: {s_int.tolist()}")
+
+
+# ==============================================================
+# 3. Parsing Datetimes: pd.to_datetime()
+# ==============================================================
+# Datetime objects unlock a rich .dt accessor for extracting year,
+# month, day, weekday, hour, etc. Always parse date strings as
+# early as possible — downstream operations are much cleaner.
+
+def demo_datetime_parsing() -> None:
+    df = make_orders_df()
+
+    # Convert the string column to datetime64
+    df["order_date"] = pd.to_datetime(df["order_date"])
+    print(f"\n  order_date dtype after parsing: {df['order_date'].dtype}")
+    print(df[["order_id", "order_date"]].to_string(index=False))
+
+    # .dt accessor: extract components
+    df["year"]    = df["order_date"].dt.year
+    df["month"]   = df["order_date"].dt.month
+    df["weekday"] = df["order_date"].dt.day_name()
+    print(f"\n  Extracted date components:")
+    print(df[["order_id", "order_date", "year", "month", "weekday"]].to_string(index=False))
+
+    # Parsing a non-standard format
+    custom = pd.Series(["15/01/2024", "20/01/2024", "03/02/2024"])
+    parsed = pd.to_datetime(custom, format="%d/%m/%Y")
+    print(f"\n  Custom format '%d/%m/%Y':")
+    print(f"  Input : {custom.tolist()}")
+    print(f"  Parsed: {[str(d.date()) for d in parsed]}")
+
+    # errors='coerce' turns unparseable strings into NaT
+    bad = pd.Series(["2024-01-15", "not-a-date", "2024-03-01"])
+    coerced = pd.to_datetime(bad, errors="coerce")
+    print(f"\n  errors='coerce' on bad dates: {coerced.tolist()}")
+
+
+# ==============================================================
+# 4. Date Arithmetic: timedelta and date_range
+# ==============================================================
+# Datetime series support direct arithmetic. Subtracting two
+# datetime columns yields a Timedelta series. DateOffset lets
+# you add calendar-aware intervals (months, business days).
+
+def demo_date_arithmetic() -> None:
+    df = make_orders_df()
+    df["order_date"] = pd.to_datetime(df["order_date"])
+
+    # Days since the first order in the dataset
+    earliest = df["order_date"].min()
+    df["days_since_first"] = (df["order_date"] - earliest).dt.days
+    print(f"\n  Days since first order (reference: {earliest.date()}):")
+    print(df[["order_id", "order_date", "days_since_first"]].to_string(index=False))
+
+    # Add a fixed timedelta: estimated delivery = order + 5 days
+    df["est_delivery"] = df["order_date"] + pd.Timedelta(days=5)
+    print(f"\n  Estimated delivery (order + 5 days):")
+    print(df[["order_id", "order_date", "est_delivery"]].to_string(index=False))
+
+    # pd.date_range: generate a sequence of dates
+    weekly = pd.date_range(start="2024-01-01", periods=6, freq="W")
+    print(f"\n  Weekly date range (6 periods):")
+    print(f"  {[str(d.date()) for d in weekly]}")
+
+    monthly = pd.date_range(start="2024-01-01", periods=6, freq="ME")
+    print(f"\n  Month-end date range (6 periods):")
+    print(f"  {[str(d.date()) for d in monthly]}")
