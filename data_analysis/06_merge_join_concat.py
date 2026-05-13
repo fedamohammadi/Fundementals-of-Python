@@ -214,3 +214,79 @@ def demo_index_join() -> None:
     )
     print(f"\n  merge(left_index=True, right_on='cust_id'):")
     print(merged.to_string(index=False))
+
+
+# ==============================================================
+# 7. Practical Example: Customer-Order Report
+# ==============================================================
+# Build a complete enriched order report: attach customer details,
+# flag unknown customers, and compute per-customer summaries.
+
+def demo_order_report() -> None:
+    customers = make_customers()
+    orders    = make_orders()
+
+    # Left join from orders so all transactions are preserved
+    report = pd.merge(orders, customers, on="cust_id", how="left")
+    report["known_customer"] = report["name"].notna()
+
+    print(f"\n  --- Enriched order report ---")
+    print(report.to_string(index=False))
+
+    # Per-customer total spend (known customers only)
+    spend = (
+        report[report["known_customer"]]
+        .groupby(["cust_id", "name", "tier"])["amount"]
+        .sum()
+        .reset_index()
+        .sort_values("amount", ascending=False)
+    )
+    print(f"\n  Total spend per customer:")
+    print(spend.to_string(index=False))
+
+    # Orders with no matching customer record
+    unknown = report[~report["known_customer"]][["order_id", "cust_id", "product", "amount"]]
+    print(f"\n  Orders with unrecognised customer ID:")
+    print(unknown.to_string(index=False))
+
+    # Revenue by city and tier
+    summary = (
+        report[report["known_customer"]]
+        .groupby(["city", "tier"])["amount"]
+        .sum()
+        .reset_index()
+        .sort_values("amount", ascending=False)
+    )
+    print(f"\n  Revenue by city and tier:")
+    print(summary.to_string(index=False))
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Concatenating DataFrames: pd.concat")
+    demo_concat()
+
+    section("2. Inner Join")
+    demo_inner_join()
+
+    section("3. Left and Right Joins")
+    demo_left_right_join()
+
+    section("4. Outer Join")
+    demo_outer_join()
+
+    section("5. Merging on Multiple Keys")
+    demo_multi_key_merge()
+
+    section("6. Joining on Index")
+    demo_index_join()
+
+    section("7. Practical Example: Customer-Order Report")
+    demo_order_report()
+
+
+if __name__ == "__main__":
+    main()
