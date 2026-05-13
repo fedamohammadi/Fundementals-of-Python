@@ -220,3 +220,74 @@ def demo_ordered_categories() -> None:
     sorted_df = df[["order_id", "status_ord"]].sort_values("status_ord")
     print(f"\n  Sorted by status (pending -> shipped -> delivered):")
     print(sorted_df.to_string(index=False))
+
+
+# ==============================================================
+# 7. Practical Example: E-commerce Orders Analysis
+# ==============================================================
+# A full type-fixing pipeline: parse dates, encode categories,
+# then answer business questions that depend on correct types.
+
+def demo_orders_analysis() -> None:
+    df = make_orders_df()
+
+    # Fix all types upfront
+    df["order_date"] = pd.to_datetime(df["order_date"])
+    df["category"]   = df["category"].str.strip().str.title().astype("category")
+    status_order     = pd.CategoricalDtype(["pending", "shipped", "delivered"], ordered=True)
+    df["status"]     = df["status"].astype(status_order)
+
+    print(f"\n  --- Cleaned orders ---")
+    print(df.to_string(index=False))
+
+    # Monthly revenue
+    df["month"] = df["order_date"].dt.to_period("M")
+    monthly_rev = df.groupby("month", observed=True)["amount"].sum()
+    print(f"\n  Monthly revenue:")
+    print(monthly_rev.to_string())
+
+    # Revenue by category (delivered orders only)
+    delivered = df[df["status"] == "delivered"]
+    cat_rev = (
+        delivered.groupby("category", observed=True)["amount"]
+        .sum()
+        .sort_values(ascending=False)
+    )
+    print(f"\n  Revenue from delivered orders by category:")
+    print(cat_rev.to_string())
+
+    # Average order age (days) by status
+    df["days_old"] = (df["order_date"].max() - df["order_date"]).dt.days
+    print(f"\n  Average order age (days) by status:")
+    print(df.groupby("status", observed=True)["days_old"].mean().round(1).to_string())
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Pandas Data Types and dtypes")
+    demo_dtypes()
+
+    section("2. Type Casting with astype()")
+    demo_type_casting()
+
+    section("3. Parsing Datetimes: pd.to_datetime()")
+    demo_datetime_parsing()
+
+    section("4. Date Arithmetic: timedelta and date_range")
+    demo_date_arithmetic()
+
+    section("5. Categorical Data")
+    demo_categorical()
+
+    section("6. Ordered Categories")
+    demo_ordered_categories()
+
+    section("7. Practical Example: E-commerce Orders Analysis")
+    demo_orders_analysis()
+
+
+if __name__ == "__main__":
+    main()
