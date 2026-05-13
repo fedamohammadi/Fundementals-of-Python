@@ -158,3 +158,65 @@ def demo_date_arithmetic() -> None:
     monthly = pd.date_range(start="2024-01-01", periods=6, freq="ME")
     print(f"\n  Month-end date range (6 periods):")
     print(f"  {[str(d.date()) for d in monthly]}")
+
+
+# ==============================================================
+# 5. Categorical Data
+# ==============================================================
+# Storing repeated string values as Categorical saves memory and
+# speeds up groupby. The underlying encoding is integer codes with
+# a separate categories array — like a lookup table.
+
+def demo_categorical() -> None:
+    df = make_orders_df()
+
+    # Normalise category labels first
+    df["category"] = df["category"].str.strip().str.title()
+
+    # Convert to Categorical
+    df["cat_cat"] = df["category"].astype("category")
+    print(f"\n  category as object  : {df['category'].dtype}")
+    print(f"  category as category: {df['cat_cat'].dtype}")
+    print(f"  Categories: {df['cat_cat'].cat.categories.tolist()}")
+    print(f"  Codes     : {df['cat_cat'].cat.codes.tolist()}")
+
+    # Memory comparison
+    mem_obj = df["category"].memory_usage(deep=True)
+    mem_cat = df["cat_cat"].memory_usage(deep=True)
+    print(f"\n  Memory — object: {mem_obj} bytes  |  category: {mem_cat} bytes")
+
+    # status also benefits from categorical encoding
+    df["status_cat"] = df["status"].astype("category")
+    print(f"\n  status categories: {df['status_cat'].cat.categories.tolist()}")
+    print(f"  status codes     : {df['status_cat'].cat.codes.tolist()}")
+
+
+# ==============================================================
+# 6. Ordered Categories
+# ==============================================================
+# An ordered Categorical has a defined ranking between levels.
+# This enables < > comparisons and meaningful sorting — critical
+# for columns like priority, satisfaction rating, or size (S/M/L/XL).
+
+def demo_ordered_categories() -> None:
+    df = make_orders_df()
+
+    # Define status order: pending < shipped < delivered
+    status_order = pd.CategoricalDtype(
+        categories=["pending", "shipped", "delivered"],
+        ordered=True,
+    )
+    df["status_ord"] = df["status"].astype(status_order)
+
+    print(f"\n  status_ord dtype: {df['status_ord'].dtype}")
+    print(f"  Categories (ordered): {df['status_ord'].cat.categories.tolist()}")
+
+    # Comparison: which orders have reached or passed 'shipped'?
+    advanced = df[df["status_ord"] >= "shipped"]
+    print(f"\n  Orders at or past 'shipped':")
+    print(advanced[["order_id", "customer", "status_ord"]].to_string(index=False))
+
+    # Sorting respects the category order, not alphabetical order
+    sorted_df = df[["order_id", "status_ord"]].sort_values("status_ord")
+    print(f"\n  Sorted by status (pending -> shipped -> delivered):")
+    print(sorted_df.to_string(index=False))
