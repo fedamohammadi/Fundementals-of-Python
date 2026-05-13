@@ -37,3 +37,57 @@ def make_orders_df() -> pd.DataFrame:
         "status":     ["shipped", "delivered", "shipped", "delivered",
                        "pending", "delivered", "shipped", "pending"],
     })
+
+
+# ==============================================================
+# 1. Pandas Data Types and dtypes
+# ==============================================================
+# Every Series has a dtype that controls memory layout and which
+# operations are valid. Object dtype (used for strings) is the
+# least efficient — a common source of hidden memory waste.
+# df.info() gives a quick picture of types and null counts.
+
+def demo_dtypes() -> None:
+    df = make_orders_df()
+
+    print(f"\n  DataFrame dtypes:")
+    print(df.dtypes.to_string())
+
+    print(f"\n  Memory usage per column (bytes):")
+    print(df.memory_usage(deep=True).to_string())
+
+    total_kb = df.memory_usage(deep=True).sum() / 1024
+    print(f"\n  Total memory: {total_kb:.1f} KB")
+
+    print(f"\n  df.info():")
+    df.info()
+
+
+# ==============================================================
+# 2. Type Casting with astype()
+# ==============================================================
+# astype() converts a Series to a new dtype in one call.
+# pd.to_numeric() and pd.to_datetime() are safer for data from
+# external sources because they accept an errors= parameter.
+
+def demo_type_casting() -> None:
+    df = make_orders_df()
+
+    # Cast amount to int (truncates decimal)
+    df["amount_int"] = df["amount"].astype(int)
+    print(f"\n  amount as float: {df['amount'].tolist()}")
+    print(f"  amount as int  : {df['amount_int'].tolist()}")
+
+    # pd.to_numeric with coerce: bad strings become NaN instead of raising
+    messy = pd.Series(["10", "20", "abc", "40", None])
+    numeric = pd.to_numeric(messy, errors="coerce")
+    print(f"\n  pd.to_numeric(errors='coerce'):")
+    print(f"  Input : {messy.tolist()}")
+    print(f"  Output: {numeric.tolist()}")
+
+    # Cast object column to nullable integer (supports NaN)
+    s = pd.Series([1, 2, None, 4], dtype="object")
+    s_int = s.astype("Int64")
+    print(f"\n  object -> Int64 (nullable integer):")
+    print(f"  Before dtype: {s.dtype}  |  After dtype: {s_int.dtype}")
+    print(f"  Values: {s_int.tolist()}")
