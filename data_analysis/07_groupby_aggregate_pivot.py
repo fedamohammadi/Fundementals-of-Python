@@ -225,3 +225,74 @@ def demo_pivot_table() -> None:
     ).round(0)
     print(f"\n  Revenue sum and mean by product × region:")
     print(pivot_multi.to_string())
+
+
+# ==============================================================
+# 7. Practical Example: Regional Sales Dashboard
+# ==============================================================
+# Combine groupby and pivot to produce a one-page summary:
+# a rep leaderboard, quarterly trend by region, and product mix.
+
+def demo_sales_dashboard() -> None:
+    df = make_sales_df()
+
+    # Rep leaderboard
+    leaderboard = (
+        df.groupby(["rep", "region"])
+          .agg(total_rev=("revenue", "sum"), deals=("revenue", "count"))
+          .sort_values("total_rev", ascending=False)
+          .reset_index()
+    )
+    print(f"\n  --- Rep leaderboard ---")
+    print(leaderboard.to_string(index=False))
+
+    # Quarterly revenue trend by region
+    q_trend = pd.pivot_table(
+        df, values="revenue", index="region", columns="quarter",
+        aggfunc="sum", fill_value=0, margins=True, margins_name="Total",
+    )
+    print(f"\n  --- Quarterly revenue by region ---")
+    print(q_trend.to_string())
+
+    # Product mix: share of units sold per region
+    product_mix = pd.pivot_table(
+        df, values="units", index="region", columns="product",
+        aggfunc="sum", fill_value=0,
+    )
+    product_mix_pct = product_mix.div(product_mix.sum(axis=1), axis=0).mul(100).round(1)
+    print(f"\n  --- Product mix (% of units) by region ---")
+    print(product_mix_pct.to_string())
+
+    top_region = leaderboard.groupby("region")["total_rev"].sum().idxmax()
+    print(f"\n  Top region by total revenue: {top_region}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. GroupBy Basics")
+    demo_groupby_basics()
+
+    section("2. Aggregation: agg() with Multiple Functions")
+    demo_aggregation()
+
+    section("3. Custom Aggregation Functions")
+    demo_custom_agg()
+
+    section("4. transform: Broadcasting Results Back")
+    demo_transform()
+
+    section("5. filter: Keeping or Discarding Entire Groups")
+    demo_filter()
+
+    section("6. Pivot Tables")
+    demo_pivot_table()
+
+    section("7. Practical Example: Regional Sales Dashboard")
+    demo_sales_dashboard()
+
+
+if __name__ == "__main__":
+    main()
