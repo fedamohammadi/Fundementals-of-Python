@@ -161,3 +161,67 @@ def demo_transform() -> None:
     print(f"\n  Rank within region (1 = highest):")
     ranked = df[["region", "rep", "revenue", "rank_in_region"]].sort_values(["region", "rank_in_region"])
     print(ranked.to_string(index=False))
+
+
+# ==============================================================
+# 5. filter: Keeping or Discarding Entire Groups
+# ==============================================================
+# filter() takes a function that receives each group DataFrame
+# and returns True (keep) or False (discard). Unlike a row-level
+# boolean mask, it acts on entire groups at once.
+
+def demo_filter() -> None:
+    df = make_sales_df()
+
+    # Keep only regions with total revenue above 30,000
+    high_rev = df.groupby("region").filter(lambda g: g["revenue"].sum() > 30_000)
+    n_before = df["region"].nunique()
+    n_after  = high_rev["region"].nunique()
+    print(f"\n  Regions with total revenue > 30,000 ({n_before} -> {n_after} regions):")
+    print(high_rev[["region", "rep", "revenue"]].to_string(index=False))
+
+    # Keep only reps who made at least 2 deals
+    active = df.groupby("rep").filter(lambda g: len(g) >= 2)
+    print(f"\n  Reps with >= 2 deals ({df['rep'].nunique()} -> {active['rep'].nunique()} reps):")
+    print(active[["rep", "region", "revenue"]].to_string(index=False))
+
+    # Keep only products whose mean revenue exceeds a threshold
+    consistent = df.groupby("product").filter(lambda g: g["revenue"].mean() > 10_000)
+    print(f"\n  Products with mean revenue > 10,000:")
+    print(consistent[["product", "rep", "revenue"]].to_string(index=False))
+
+
+# ==============================================================
+# 6. Pivot Tables
+# ==============================================================
+# pd.pivot_table reshapes data into a spreadsheet-style summary.
+# values= is the column to aggregate, index= and columns= define
+# the row/column labels, aggfunc= the function.
+# margins=True adds grand row and column totals.
+
+def demo_pivot_table() -> None:
+    df = make_sales_df()
+
+    # Revenue by region (rows) and quarter (columns)
+    pivot = pd.pivot_table(
+        df, values="revenue", index="region", columns="quarter",
+        aggfunc="sum", fill_value=0,
+    )
+    print(f"\n  Revenue pivot: region × quarter:")
+    print(pivot.to_string())
+
+    # With grand totals
+    pivot_totals = pd.pivot_table(
+        df, values="revenue", index="region", columns="quarter",
+        aggfunc="sum", fill_value=0, margins=True, margins_name="Total",
+    )
+    print(f"\n  Same pivot with totals (margins=True):")
+    print(pivot_totals.to_string())
+
+    # Multiple aggregation functions at once
+    pivot_multi = pd.pivot_table(
+        df, values="revenue", index="product", columns="region",
+        aggfunc=["sum", "mean"], fill_value=0,
+    ).round(0)
+    print(f"\n  Revenue sum and mean by product × region:")
+    print(pivot_multi.to_string())
