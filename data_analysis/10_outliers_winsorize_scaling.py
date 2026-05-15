@@ -175,3 +175,64 @@ def demo_minmax_scaling() -> None:
     # Verify the scaled range is exactly [0, 1]
     for col in ["price_mm", "sqft_mm", "age_years_mm"]:
         print(f"  {col}: min={df[col].min():.3f}  max={df[col].max():.3f}")
+
+
+# ==============================================================
+# 5. Standard Scaling (Standardisation)
+# ==============================================================
+# Standard scaling transforms values to z = (x - mean) / std,
+# giving a column with mean ≈ 0 and std ≈ 1. Unlike min-max, it
+# does not bound the output range — a genuine outlier will still
+# appear far from zero, which makes outlier inspection easier after
+# scaling without needing to know the original scale.
+
+def demo_standard_scaling() -> None:
+    df = make_houses_df().copy()
+
+    for col in ["price", "sqft", "age_years"]:
+        mean, std      = df[col].mean(), df[col].std()
+        df[f"{col}_z"] = (df[col] - mean) / std
+
+    print(f"\n  Standard-scaled columns (first 10 rows):")
+    cols = ["price", "price_z", "sqft", "sqft_z", "age_years", "age_years_z"]
+    print(df[cols].head(10).round(3).to_string(index=False))
+
+    # Verify mean ≈ 0 and std ≈ 1 for each scaled column
+    for col in ["price_z", "sqft_z", "age_years_z"]:
+        print(f"  {col}: mean={df[col].mean():.4f}  std={df[col].std():.4f}")
+
+
+# ==============================================================
+# 6. Robust Scaling
+# ==============================================================
+# Robust scaling uses the median and IQR:
+# x_robust = (x - median) / IQR. Neither the median nor the IQR
+# is pulled hard by extreme values, making this method suitable
+# when outliers are present but cannot be removed. The centre is
+# 0 for the median and the typical unit is one IQR.
+
+def demo_robust_scaling() -> None:
+    df = make_houses_df().copy()
+
+    for col in ["price", "sqft", "age_years"]:
+        median         = df[col].median()
+        q1, q3         = df[col].quantile([0.25, 0.75])
+        iqr            = q3 - q1
+        df[f"{col}_r"] = (df[col] - median) / iqr
+
+    print(f"\n  Robust-scaled columns (first 10 rows):")
+    cols = ["price", "price_r", "sqft", "sqft_r", "age_years", "age_years_r"]
+    print(df[cols].head(10).round(3).to_string(index=False))
+
+    # Show how differently each method handles the luxury outlier at row 18
+    price     = df["price"]
+    lo, hi    = price.quantile([0.05, 0.95])
+    price_mm  = (price.clip(lo, hi) - price.clip(lo, hi).min()) / (price.clip(lo, hi).max() - price.clip(lo, hi).min())
+    price_z   = (price - price.mean()) / price.std()
+    median    = price.median()
+    iqr_val   = price.quantile(0.75) - price.quantile(0.25)
+    price_r   = (price - median) / iqr_val
+    print(f"\n  Price outlier at row 18 (price={df.loc[18, 'price']:,.0f}):")
+    print(f"  Min-max scaled : {price_mm[18]:.3f}  (capped at 1 after winsorize)")
+    print(f"  Standard scaled: {price_z[18]:.3f}")
+    print(f"  Robust scaled  : {price_r[18]:.3f}")
