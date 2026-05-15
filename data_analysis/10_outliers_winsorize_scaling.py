@@ -74,3 +74,39 @@ def demo_iqr() -> None:
         iqr    = q3 - q1
         outlier_mask |= (df[col] < q1 - 1.5 * iqr) | (df[col] > q3 + 1.5 * iqr)
     print(f"\n  Rows flagged as outliers in any column: {outlier_mask.sum()} / {len(df)}")
+
+
+# ==============================================================
+# 2. Z-Score Method for Outlier Detection
+# ==============================================================
+# A z-score measures distance from the mean in units of standard
+# deviation: z = (x - mean) / std. |z| > 3 is the standard
+# threshold (~0.3 % of a normal distribution). The weakness: the
+# mean and std are themselves pulled by the outliers being detected,
+# making IQR the safer choice on skewed or contaminated data.
+
+def demo_zscore() -> None:
+    df = make_houses_df()
+
+    for col in ["price", "sqft"]:
+        mean, std = df[col].mean(), df[col].std()
+        z         = (df[col] - mean) / std
+        flags     = z.abs() > 3
+        print(f"\n  Z-score outliers in '{col}' (|z| > 3):")
+        print(f"  mean={mean:,.0f}  std={std:,.0f}")
+        print(f"  Flagged rows ({flags.sum()}):")
+        if flags.any():
+            print(df.loc[flags, [col]].assign(z_score=z[flags].round(2)).to_string())
+        else:
+            print("  (none)")
+
+    # Compare IQR vs z-score agreement on price
+    price    = df["price"]
+    q1, q3   = price.quantile([0.25, 0.75])
+    iqr      = q3 - q1
+    iqr_flag = (price < q1 - 1.5 * iqr) | (price > q3 + 1.5 * iqr)
+    z_flag   = ((price - price.mean()) / price.std()).abs() > 3
+    print(f"\n  Price outlier agreement between methods:")
+    print(f"  Both methods  : {(iqr_flag & z_flag).sum()}")
+    print(f"  IQR only      : {(iqr_flag & ~z_flag).sum()}")
+    print(f"  Z-score only  : {(z_flag & ~iqr_flag).sum()}")
