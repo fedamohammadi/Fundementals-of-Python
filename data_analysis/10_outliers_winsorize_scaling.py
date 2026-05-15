@@ -236,3 +236,83 @@ def demo_robust_scaling() -> None:
     print(f"  Min-max scaled : {price_mm[18]:.3f}  (capped at 1 after winsorize)")
     print(f"  Standard scaled: {price_z[18]:.3f}")
     print(f"  Robust scaled  : {price_r[18]:.3f}")
+
+
+# ==============================================================
+# 7. Practical Example: Cleaning and Scaling a House Price Dataset
+# ==============================================================
+# Full pipeline: flag outliers with IQR, winsorize all features,
+# then produce all three scaled versions of price side by side for
+# direct comparison — the pattern used before feeding data to a model.
+
+def demo_house_pipeline() -> None:
+    df = make_houses_df()
+    features = ["price", "sqft", "bedrooms", "age_years"]
+
+    # Outlier report
+    print(f"\n  --- Outlier report (IQR method) ---")
+    for col in features:
+        q1, q3 = df[col].quantile([0.25, 0.75])
+        iqr    = q3 - q1
+        lo, hi = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        flags  = (df[col] < lo) | (df[col] > hi)
+        print(f"  {col:<12}: {flags.sum()} outlier(s) flagged")
+
+    # Winsorize all features at the 5th–95th percentile
+    df_clean = df.copy()
+    for col in features:
+        lo_p, hi_p    = df_clean[col].quantile([0.05, 0.95])
+        df_clean[col] = df_clean[col].clip(lower=lo_p, upper=hi_p)
+    print(f"\n  --- After winsorizing (5th–95th) ---")
+    print(df_clean[features].describe().round(0).to_string())
+
+    # Apply all three scaling methods to price and compare
+    col          = "price"
+    col_min      = df_clean[col].min()
+    col_max      = df_clean[col].max()
+    mean, std    = df_clean[col].mean(), df_clean[col].std()
+    median       = df_clean[col].median()
+    iqr_val      = df_clean[col].quantile(0.75) - df_clean[col].quantile(0.25)
+
+    result = pd.DataFrame({
+        "price_raw"     : df[col],
+        "price_wins"    : df_clean[col],
+        "price_minmax"  : (df_clean[col] - col_min) / (col_max - col_min),
+        "price_standard": (df_clean[col] - mean) / std,
+        "price_robust"  : (df_clean[col] - median) / iqr_val,
+    })
+    print(f"\n  --- All scaled versions of price (first 10 rows) ---")
+    print(result.head(10).round(3).to_string(index=False))
+
+    print(f"\n  Dataset ready for modelling: {df_clean.shape[0]} rows × {df_clean.shape[1]} cols")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. IQR Method for Outlier Detection")
+    demo_iqr()
+
+    section("2. Z-Score Method for Outlier Detection")
+    demo_zscore()
+
+    section("3. Winsorizing: Clipping to Boundary Percentiles")
+    demo_winsorize()
+
+    section("4. Min-Max Scaling (Normalisation)")
+    demo_minmax_scaling()
+
+    section("5. Standard Scaling (Standardisation)")
+    demo_standard_scaling()
+
+    section("6. Robust Scaling")
+    demo_robust_scaling()
+
+    section("7. Practical Example: Cleaning and Scaling a House Price Dataset")
+    demo_house_pipeline()
+
+
+if __name__ == "__main__":
+    main()
