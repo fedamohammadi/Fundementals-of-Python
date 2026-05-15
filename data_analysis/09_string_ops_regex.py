@@ -250,3 +250,81 @@ def demo_regex_replace() -> None:
     print(f"\n  re.compile to extract 4-digit years:")
     for s, m in zip(sample, matches):
         print(f"  {s!r:30s} -> {m}")
+
+
+# ==============================================================
+# 7. Practical Example: Cleaning a Product Catalog
+# ==============================================================
+# Full pipeline: strip and normalise text, parse embedded price
+# strings, split SKU fields into structured columns, map prefix
+# codes to product types, then compute a per-type price summary.
+
+def demo_catalog_cleaning() -> None:
+    df = make_catalog_df()
+
+    # Step 1: normalise free-text columns
+    df["name"]     = df["raw_name"].str.strip().str.replace(r"\s{2,}", " ", regex=True).str.title()
+    df["category"] = df["category"].str.strip().str.title()
+
+    # Step 2: parse price from its raw dollar-sign format
+    df["price"] = df["price_raw"].str.extract(r"\$(\d+\.\d+)").astype(float)
+
+    # Step 3: split SKU into structured fields
+    sku_parts        = df["sku"].str.split("-", expand=True)
+    df["sku_prefix"] = sku_parts[0]
+    df["sku_code"]   = sku_parts[1]
+    df["sku_year"]   = sku_parts[2].astype(int)
+
+    # Step 4: decode product type from SKU prefix
+    prefix_map = {"WDG": "Widget", "GDG": "Gadget", "MON": "Monitor",
+                  "KBD": "Keyboard", "MOU": "Mouse"}
+    df["product_type"] = df["sku_prefix"].map(prefix_map)
+
+    print(f"\n  --- Cleaned catalog ---")
+    cols = ["product_id", "name", "category", "price", "sku", "sku_year", "product_type"]
+    print(df[cols].to_string(index=False))
+
+    # Average price per product type
+    avg_price = df.groupby("product_type")["price"].mean().round(2).sort_values(ascending=False)
+    print(f"\n  Average price by product type:")
+    print(avg_price.to_string())
+
+    # Products released in 2024
+    recent = df[df["sku_year"] == 2024][["name", "sku", "price"]]
+    print(f"\n  Products released in 2024:")
+    print(recent.to_string(index=False))
+
+    # Verify all categories were unified
+    print(f"\n  Unique categories after cleaning: {df['category'].unique().tolist()}")
+    print(f"  All consistent: {df['category'].nunique() == 1}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. str Accessor: Basic Cleaning")
+    demo_str_basics()
+
+    section("2. Splitting and Joining")
+    demo_split_join()
+
+    section("3. Filtering with str.contains, startswith, endswith")
+    demo_filtering()
+
+    section("4. Extracting with str.extract()")
+    demo_extract()
+
+    section("5. str.findall(): All Matches as Lists")
+    demo_findall()
+
+    section("6. Replacing with Regex")
+    demo_regex_replace()
+
+    section("7. Practical Example: Cleaning a Product Catalog")
+    demo_catalog_cleaning()
+
+
+if __name__ == "__main__":
+    main()
