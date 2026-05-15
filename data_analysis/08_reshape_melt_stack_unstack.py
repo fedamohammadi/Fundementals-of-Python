@@ -63,3 +63,36 @@ def demo_wide_vs_long() -> None:
     print(f"  groupby('quarter') on long — total per quarter:")
     totals = long_example.groupby("quarter")["revenue"].sum()
     print(totals.to_string())
+
+
+# ==============================================================
+# 2. melt(): Wide to Long
+# ==============================================================
+# melt() unpivots selected value columns into a single column,
+# creating a key column for the former column names. id_vars=
+# identifies columns that stay fixed. Use var_name= and value_name=
+# to control the labels of the two new columns produced.
+
+def demo_melt() -> None:
+    wide = make_wide_df()
+
+    # All four quarter columns become rows
+    long = wide.melt(
+        id_vars=["rep", "region"],
+        value_vars=["Q1", "Q2", "Q3", "Q4"],
+        var_name="quarter",
+        value_name="revenue",
+    )
+    long = long.sort_values(["rep", "quarter"]).reset_index(drop=True)
+    print(f"\n  melt() result ({long.shape[0]} rows × {long.shape[1]} cols):")
+    print(long.to_string(index=False))
+
+    # groupby now works naturally on the quarter column
+    q_totals = long.groupby("quarter")["revenue"].sum()
+    print(f"\n  Total revenue by quarter (from long format):")
+    print(q_totals.to_string())
+
+    # Melt only H1 quarters to compare halves
+    h1 = wide.melt(id_vars=["rep"], value_vars=["Q1", "Q2"], var_name="half", value_name="revenue")
+    print(f"\n  Melt of Q1/Q2 only (H1 comparison):")
+    print(h1.to_string(index=False))
