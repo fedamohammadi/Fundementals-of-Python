@@ -181,3 +181,72 @@ def demo_extract() -> None:
     caps.columns = ["all_caps_word"]
     print(f"\n  str.extractall() — all-caps tokens in raw names:")
     print(caps.to_string())
+
+
+# ==============================================================
+# 5. str.findall(): All Matches as Lists
+# ==============================================================
+# str.findall() returns a list of all non-overlapping matches for
+# a pattern in each string. The result is a Series of lists, not
+# a flat Series — use str.len() on it to count matches, or explode()
+# to flatten into individual rows for further analysis.
+
+def demo_findall() -> None:
+    df = make_catalog_df()
+
+    # Find all uppercase tokens in the raw product name
+    df["caps_words"] = df["raw_name"].str.findall(r"[A-Z][A-Z0-9]+")
+    print(f"\n  str.findall() — uppercase tokens per product:")
+    print(df[["raw_name", "caps_words"]].to_string(index=False))
+
+    # Count uppercase tokens per name
+    df["n_caps"] = df["caps_words"].str.len()
+    print(f"\n  Count of uppercase tokens per product:")
+    print(df[["raw_name", "n_caps"]].to_string(index=False))
+
+    # Find all digit sequences in each SKU
+    df["digits"] = df["sku"].str.findall(r"\d+")
+    print(f"\n  Digit sequences in SKU:")
+    print(df[["sku", "digits"]].to_string(index=False))
+
+    # Flatten all caps words into individual rows for frequency count
+    all_tokens = df["caps_words"].explode().dropna()
+    print(f"\n  Most common uppercase tokens across all names:")
+    print(all_tokens.value_counts().head(6).to_string())
+
+
+# ==============================================================
+# 6. Replacing with Regex
+# ==============================================================
+# str.replace() accepts regex patterns by default (regex=True).
+# Backreferences like r"\1" reuse captured groups to reorder or
+# reformat parts of the match. The re module handles cases that
+# need flags (re.IGNORECASE, re.MULTILINE) or pre-compiled patterns.
+
+def demo_regex_replace() -> None:
+    df = make_catalog_df()
+
+    # Collapse two or more consecutive spaces into one
+    df["name_clean"] = df["raw_name"].str.strip().str.replace(r"\s{2,}", " ", regex=True)
+    print(f"\n  Collapsed extra spaces:")
+    print(df[["raw_name", "name_clean"]].to_string(index=False))
+
+    # Strip any character that is not a letter, digit, or hyphen from SKU
+    df["sku_clean"] = df["sku"].str.replace(r"[^A-Z0-9\-]", "", regex=True)
+    print(f"\n  SKU cleaned (non-alphanumeric removed):")
+    print(df[["sku", "sku_clean"]].to_string(index=False))
+
+    # Reformat SKU: move the year to the front using capture groups
+    df["sku_reformatted"] = df["sku"].str.replace(
+        r"^([A-Z]+)-([A-Z0-9]+)-(\d{4})$", r"\3-\1-\2", regex=True
+    )
+    print(f"\n  SKU reformatted (year first):")
+    print(df[["sku", "sku_reformatted"]].to_string(index=False))
+
+    # re module: compile a pattern once for repeated use
+    pattern = re.compile(r"\b\d{4}\b")
+    sample  = ["WDG-X1-2024", "GDG-L2-2023", "no-year-here"]
+    matches = [m.group() if (m := pattern.search(s)) else None for s in sample]
+    print(f"\n  re.compile to extract 4-digit years:")
+    for s, m in zip(sample, matches):
+        print(f"  {s!r:30s} -> {m}")
