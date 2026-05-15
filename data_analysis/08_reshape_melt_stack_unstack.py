@@ -162,3 +162,72 @@ def demo_stack() -> None:
     best = flat.loc[flat.groupby("rep")["revenue"].idxmax()][["rep", "quarter", "revenue"]]
     print(f"\n  Best quarter per rep:")
     print(best.to_string(index=False))
+
+
+# ==============================================================
+# 5. unstack(): Row Level into Columns
+# ==============================================================
+# unstack() is the inverse of stack. It rotates one level of the
+# row MultiIndex out into column labels. The default is the innermost
+# level, but a level name or integer can be passed. fill_value=
+# replaces any NaN that arises when a combination is missing.
+
+def demo_unstack() -> None:
+    wide = make_wide_df().set_index("rep")
+    stacked = wide[["Q1", "Q2", "Q3", "Q4"]].stack()
+    stacked.index.names = ["rep", "quarter"]
+    stacked.name = "revenue"
+
+    # Unstack the quarter level back to columns
+    unstacked = stacked.unstack("quarter")
+    unstacked.columns.name = None
+    print(f"\n  unstack('quarter') — back to wide:")
+    print(unstacked.to_string())
+
+    # Three-level index: region → rep → quarter
+    long = make_wide_df().melt(
+        id_vars=["rep", "region"], value_vars=["Q1", "Q2"],
+        var_name="quarter", value_name="revenue",
+    )
+    mi = long.set_index(["region", "rep", "quarter"])["revenue"]
+    print(f"\n  unstack('quarter') on 3-level MultiIndex:")
+    print(mi.unstack("quarter").to_string())
+
+
+# ==============================================================
+# 6. crosstab(): Frequency Tables
+# ==============================================================
+# pd.crosstab() computes a contingency table between two categorical
+# variables. normalize= converts counts to proportions (by 'index',
+# 'columns', or 'all'). Pass values= and aggfunc= to aggregate a
+# numeric column instead of just counting rows.
+
+def demo_crosstab() -> None:
+    np.random.seed(7)
+    n = 40
+    sales_log = pd.DataFrame({
+        "region":  np.random.choice(["North", "South", "East", "West"], n),
+        "quarter": np.random.choice(["Q1", "Q2", "Q3", "Q4"], n),
+        "product": np.random.choice(["Widget", "Gadget"], n),
+        "revenue": np.random.randint(5_000, 20_000, n),
+    })
+
+    # Deal count by region × quarter
+    ct = pd.crosstab(sales_log["region"], sales_log["quarter"])
+    print(f"\n  crosstab: deal count by region × quarter:")
+    print(ct.to_string())
+
+    # Proportions within each region (rows sum to 1)
+    ct_pct = pd.crosstab(
+        sales_log["region"], sales_log["quarter"], normalize="index"
+    ).round(2)
+    print(f"\n  Normalised by row (proportions within each region):")
+    print(ct_pct.to_string())
+
+    # Total revenue instead of counts
+    ct_rev = pd.crosstab(
+        sales_log["region"], sales_log["quarter"],
+        values=sales_log["revenue"], aggfunc="sum",
+    ).fillna(0).astype(int)
+    print(f"\n  crosstab: total revenue by region × quarter:")
+    print(ct_rev.to_string())
