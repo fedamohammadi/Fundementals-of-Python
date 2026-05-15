@@ -96,3 +96,69 @@ def demo_melt() -> None:
     h1 = wide.melt(id_vars=["rep"], value_vars=["Q1", "Q2"], var_name="half", value_name="revenue")
     print(f"\n  Melt of Q1/Q2 only (H1 comparison):")
     print(h1.to_string(index=False))
+
+
+# ==============================================================
+# 3. pivot(): Long to Wide
+# ==============================================================
+# pivot() is the inverse of melt. index= sets row labels, columns=
+# sets new column names from a key column, and values= fills cells.
+# Every index × column pair must be unique — use pivot_table()
+# when duplicates exist and an aggregation function is needed.
+
+def demo_pivot() -> None:
+    wide = make_wide_df()
+    long = wide.melt(
+        id_vars=["rep", "region"], value_vars=["Q1", "Q2", "Q3", "Q4"],
+        var_name="quarter", value_name="revenue",
+    )
+
+    # Pivot back to wide — verifies the melt round-trip
+    restored = long.pivot(index=["rep", "region"], columns="quarter", values="revenue")
+    restored.columns.name = None
+    restored = restored.reset_index()
+    print(f"\n  pivot() round-trip back to wide:")
+    print(restored.to_string(index=False))
+
+    # Cross-tab style: rep vs. quarter (no region column)
+    rep_quarter = long.pivot(index="rep", columns="quarter", values="revenue")
+    rep_quarter.columns.name = None
+    print(f"\n  Revenue pivot: rep × quarter:")
+    print(rep_quarter.to_string())
+
+    # Confirm the values match the original dataset
+    cols = ["rep", "Q1", "Q2", "Q3", "Q4"]
+    match = (
+        restored[cols].reset_index(drop=True)
+        .equals(wide[cols].reset_index(drop=True))
+    )
+    print(f"\n  Round-trip matches original: {match}")
+
+
+# ==============================================================
+# 4. stack(): Columns into a Row MultiIndex
+# ==============================================================
+# stack() rotates the innermost column level into a new innermost
+# row level, producing a Series (or DataFrame) with a MultiIndex.
+# It is useful when all measurement columns share the same type
+# and you want to process them uniformly via groupby or iteration.
+
+def demo_stack() -> None:
+    wide = make_wide_df().set_index("rep")
+
+    # Stack Q1–Q4 into a (rep, quarter) MultiIndex Series
+    stacked = wide[["Q1", "Q2", "Q3", "Q4"]].stack()
+    stacked.index.names = ["rep", "quarter"]
+    stacked.name = "revenue"
+    print(f"\n  stack() result — Series with MultiIndex:")
+    print(stacked.to_string())
+
+    # Flatten to a regular DataFrame with reset_index
+    flat = stacked.reset_index()
+    print(f"\n  After reset_index():")
+    print(flat.to_string(index=False))
+
+    # Best quarter per rep (highest revenue)
+    best = flat.loc[flat.groupby("rep")["revenue"].idxmax()][["rep", "quarter", "revenue"]]
+    print(f"\n  Best quarter per rep:")
+    print(best.to_string(index=False))
