@@ -35,3 +35,31 @@ def make_wide_df() -> pd.DataFrame:
         "Q3":     [13_100, 9_200,  10_400, 12_600, 8_500],
         "Q4":     [15_800, 11_000, 13_700, 14_200, 10_300],
     })
+
+
+# ==============================================================
+# 1. Wide vs. Long Format
+# ==============================================================
+# Wide format: one row per entity, measurements spread across
+# columns. Long (tidy) format: one row per observation, with a
+# key column and a value column. Most pandas operations — groupby,
+# plotting, and pivot_table — prefer long format.
+
+def demo_wide_vs_long() -> None:
+    wide = make_wide_df()
+    print(f"\n  Wide format ({wide.shape[0]} rows × {wide.shape[1]} cols):")
+    print(wide.to_string(index=False))
+
+    # Manually built long example for Ana to illustrate the concept
+    long_example = pd.DataFrame({
+        "rep":     ["Ana"] * 4,
+        "quarter": ["Q1", "Q2", "Q3", "Q4"],
+        "revenue": [12_000, 14_200, 13_100, 15_800],
+    })
+    print(f"\n  Long format for Ana (4 rows × 3 cols):")
+    print(long_example.to_string(index=False))
+
+    print(f"\n  Wide: easy to scan. Long: easy to groupby and plot.")
+    print(f"  groupby('quarter') on long — total per quarter:")
+    totals = long_example.groupby("quarter")["revenue"].sum()
+    print(totals.to_string())
