@@ -110,3 +110,68 @@ def demo_zscore() -> None:
     print(f"  Both methods  : {(iqr_flag & z_flag).sum()}")
     print(f"  IQR only      : {(iqr_flag & ~z_flag).sum()}")
     print(f"  Z-score only  : {(z_flag & ~iqr_flag).sum()}")
+
+
+# ==============================================================
+# 3. Winsorizing: Clipping to Boundary Percentiles
+# ==============================================================
+# Winsorizing replaces values beyond a chosen percentile with the
+# percentile boundary itself — no rows are dropped, so the sample
+# size is preserved. Series.clip() is the direct implementation.
+# Choosing tight percentiles (1/99) is conservative; 5/95 is common
+# when the data is known to be noisy.
+
+def demo_winsorize() -> None:
+    df = make_houses_df().copy()
+
+    # Clip price at the 5th and 95th percentiles
+    lo_p, hi_p      = df["price"].quantile([0.05, 0.95])
+    df["price_wins"] = df["price"].clip(lower=lo_p, upper=hi_p)
+
+    comparison = df[["price", "price_wins"]].assign(
+        changed=(df["price"] != df["price_wins"])
+    )
+    print(f"\n  Winsorized price (5th–95th percentile):")
+    print(f"  Clip bounds: [{lo_p:,.0f}, {hi_p:,.0f}]")
+    print(comparison.to_string())
+
+    # Effect on summary statistics
+    print(f"\n  Statistics before winsorizing:")
+    print(df["price"].describe().round(0).to_string())
+    print(f"\n  Statistics after winsorizing:")
+    print(df["price_wins"].describe().round(0).to_string())
+
+    # sqft: clip the mansion outlier at the 99th percentile
+    lo_sq, hi_sq    = df["sqft"].quantile([0.01, 0.99])
+    df["sqft_wins"]  = df["sqft"].clip(lower=lo_sq, upper=hi_sq)
+    print(f"\n  sqft outlier clipped: {df['sqft'].max():,} -> {df['sqft_wins'].max():,}")
+
+
+# ==============================================================
+# 4. Min-Max Scaling (Normalisation)
+# ==============================================================
+# Min-max scaling maps each value linearly to [0, 1] using:
+# x_scaled = (x - min) / (max - min). It preserves relative
+# distances exactly but is sensitive to outliers — one extreme
+# value shifts the min or max anchor, compressing everything else
+# toward the centre. Winsorize first when outliers are present.
+
+def demo_minmax_scaling() -> None:
+    df = make_houses_df().copy()
+
+    # Winsorize before scaling to avoid outlier distortion
+    for col in ["price", "sqft"]:
+        lo, hi     = df[col].quantile([0.05, 0.95])
+        df[col]    = df[col].clip(lower=lo, upper=hi)
+
+    for col in ["price", "sqft", "age_years"]:
+        col_min, col_max = df[col].min(), df[col].max()
+        df[f"{col}_mm"]  = (df[col] - col_min) / (col_max - col_min)
+
+    print(f"\n  Min-max scaled columns (first 10 rows):")
+    cols = ["price", "price_mm", "sqft", "sqft_mm", "age_years", "age_years_mm"]
+    print(df[cols].head(10).round(3).to_string(index=False))
+
+    # Verify the scaled range is exactly [0, 1]
+    for col in ["price_mm", "sqft_mm", "age_years_mm"]:
+        print(f"  {col}: min={df[col].min():.3f}  max={df[col].max():.3f}")
