@@ -56,3 +56,33 @@ def make_catalog_df() -> pd.DataFrame:
             "$9.99", "$199.00", "$45.00", "$25.50",
         ],
     })
+
+
+# ==============================================================
+# 1. str Accessor: Basic Cleaning
+# ==============================================================
+# The .str accessor exposes string methods as vectorised operations
+# over a whole Series. strip() removes leading/trailing whitespace,
+# lower()/upper()/title() normalise case, and replace() does literal
+# or regex substitution. Chain calls to build a cleaning pipeline.
+
+def demo_str_basics() -> None:
+    df = make_catalog_df()
+
+    # Normalise category: strip whitespace then apply title case
+    df["category_clean"] = df["category"].str.strip().str.title()
+    print(f"\n  Raw category values:")
+    print(df["category"].tolist())
+    print(f"\n  Cleaned (strip + title):")
+    print(df["category_clean"].tolist())
+
+    # Normalise product names in the same way
+    df["name_clean"] = df["raw_name"].str.strip().str.title()
+    print(f"\n  Cleaned product names:")
+    print(df["name_clean"].tolist())
+
+    # Compare string lengths before and after stripping
+    df["len_raw"]   = df["raw_name"].str.len()
+    df["len_clean"] = df["name_clean"].str.len()
+    print(f"\n  Length comparison (raw vs cleaned):")
+    print(df[["raw_name", "len_raw", "name_clean", "len_clean"]].to_string(index=False))
