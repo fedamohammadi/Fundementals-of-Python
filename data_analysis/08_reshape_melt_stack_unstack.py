@@ -231,3 +231,89 @@ def demo_crosstab() -> None:
     ).fillna(0).astype(int)
     print(f"\n  crosstab: total revenue by region × quarter:")
     print(ct_rev.to_string())
+
+
+# ==============================================================
+# 7. Practical Example: Survey Results Reshaping
+# ==============================================================
+# Reshape a wide survey export to long format, then compute per-
+# question and per-respondent summaries. Survey tools typically
+# deliver one column per question — melt is the right first step.
+
+def demo_survey_reshape() -> None:
+    np.random.seed(0)
+    n = 8
+    survey = pd.DataFrame({
+        "respondent_id": range(1, n + 1),
+        "department":    np.random.choice(["Engineering", "Marketing", "Sales"], n),
+        "Q_clarity":     np.random.randint(1, 6, n),
+        "Q_support":     np.random.randint(1, 6, n),
+        "Q_workload":    np.random.randint(1, 6, n),
+        "Q_growth":      np.random.randint(1, 6, n),
+    })
+    print(f"\n  --- Raw wide survey ({survey.shape[0]} respondents) ---")
+    print(survey.to_string(index=False))
+
+    # Melt to long: one row per respondent × question
+    long = survey.melt(
+        id_vars=["respondent_id", "department"],
+        value_vars=["Q_clarity", "Q_support", "Q_workload", "Q_growth"],
+        var_name="question",
+        value_name="score",
+    )
+    long["question"] = long["question"].str.replace("Q_", "", regex=False)
+    print(f"\n  --- Long format ({long.shape[0]} rows) ---")
+    print(long.to_string(index=False))
+
+    # Mean score per question (ascending — lower means harder)
+    q_means = long.groupby("question")["score"].mean().round(2).sort_values()
+    print(f"\n  Mean score per question (ascending):")
+    print(q_means.to_string())
+
+    # Department × question heatmap via unstack
+    dept_q = (
+        long.groupby(["department", "question"])["score"]
+        .mean().round(2)
+        .unstack("question")
+    )
+    dept_q.columns.name = None
+    print(f"\n  Mean score by department × question:")
+    print(dept_q.to_string())
+
+    # Respondent overall average
+    resp_avg = long.groupby("respondent_id")["score"].mean().round(2)
+    print(f"\n  Average score per respondent:")
+    print(resp_avg.to_string())
+    print(f"\n  Lowest-scoring respondent : id={resp_avg.idxmin()}  avg={resp_avg.min():.2f}")
+    print(f"  Highest-scoring respondent: id={resp_avg.idxmax()}  avg={resp_avg.max():.2f}")
+
+
+# ==============================================================
+# main
+# ==============================================================
+
+def main() -> None:
+    section("1. Wide vs. Long Format")
+    demo_wide_vs_long()
+
+    section("2. melt(): Wide to Long")
+    demo_melt()
+
+    section("3. pivot(): Long to Wide")
+    demo_pivot()
+
+    section("4. stack(): Columns into a Row MultiIndex")
+    demo_stack()
+
+    section("5. unstack(): Row Level into Columns")
+    demo_unstack()
+
+    section("6. crosstab(): Frequency Tables")
+    demo_crosstab()
+
+    section("7. Practical Example: Survey Results Reshaping")
+    demo_survey_reshape()
+
+
+if __name__ == "__main__":
+    main()
